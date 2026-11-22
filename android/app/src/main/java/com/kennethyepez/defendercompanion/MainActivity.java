@@ -38,9 +38,9 @@ import org.json.JSONObject;
 public final class MainActivity extends ComponentActivity {
   private int violet = Color.rgb(113, 57, 216),
       ink = Color.rgb(37, 35, 44),
-      muted = Color.rgb(104, 101, 114),
-      canvas = Color.rgb(246, 246, 249);
-  private int surface = Color.WHITE, secondary = 0xFFEEE7FB;
+      muted = Color.rgb(91, 84, 104),
+      canvas = 0xFFEDE9F5;
+  private int secondary = 0xFFEEE7FB;
   private boolean appliedDark;
   private final ExecutorService worker = Executors.newSingleThreadExecutor();
   private EditText address;
@@ -120,7 +120,6 @@ public final class MainActivity extends ComponentActivity {
       ink = 0xFFF5F1FA;
       muted = 0xFFBDB3CA;
       canvas = 0xFF121018;
-      surface = 0xFF1E1B27;
       secondary = 0xFF302240;
     }
     preferences = getSharedPreferences("connection", MODE_PRIVATE);
@@ -128,7 +127,7 @@ public final class MainActivity extends ComponentActivity {
     NativeAppearance.systemBars(this, false);
     ScrollView scroll = new ScrollView(this);
     scroll.setFillViewport(true);
-    scroll.setBackgroundColor(canvas);
+    scroll.setBackground(NativeAppearance.glassCanvas(this));
     scroll.setOnApplyWindowInsetsListener((v, insets) -> {
       if (Build.VERSION.SDK_INT >= 30) {
         android.graphics.Insets s =
@@ -163,7 +162,8 @@ public final class MainActivity extends ComponentActivity {
     LinearLayout card = new LinearLayout(this);
     card.setOrientation(LinearLayout.VERTICAL);
     card.setPadding(dp(20), dp(20), dp(20), dp(16));
-    card.setBackground(shape(surface, 18));
+    card.setBackground(NativeAppearance.glassCard(this, 18));
+    card.setElevation(dp(2));
     add(page, card, 24);
     add(card, text("Private workspace", 17, ink, true), 0);
     add(

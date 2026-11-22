@@ -3,6 +3,7 @@ package com.kennethyepez.defendercompanion;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.view.View;
 import android.view.WindowInsetsController;
@@ -33,6 +34,26 @@ final class NativeAppearance {
 
   static int color(Context context, int light, int dark) {
     return isDark(context) ? dark : light;
+  }
+
+  static GradientDrawable glassCanvas(Context context) {
+    return new GradientDrawable(
+        GradientDrawable.Orientation.TR_BL,
+        isDark(context)
+            ? new int[] {0xFF302042, 0xFF121018, 0xFF1B1C30}
+            : new int[] {0xFFD9C7F2, 0xFFEDE9F5, 0xFFDADDF2});
+  }
+
+  static GradientDrawable glassCard(Context context, int radius) {
+    boolean dark = isDark(context);
+    float density = context.getResources().getDisplayMetrics().density;
+    GradientDrawable card =
+        new GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            dark ? new int[] {0xBD30253F, 0xAD241D35} : new int[] {0x7BFBF9FF, 0x52F8F5FF});
+    card.setCornerRadius(radius * density);
+    card.setStroke(Math.max(1, Math.round(density)), dark ? 0x31D7BFFF : 0xADFFFFFF);
+    return card;
   }
 
   static void systemBars(Activity activity, boolean purpleChrome) {

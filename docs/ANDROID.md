@@ -51,6 +51,12 @@ gradlew :app:assembleRelease :app:lintRelease
 
 Inspect the resulting APK with the Android SDK’s `apksigner verify --verbose --print-certs` and `aapt2 dump badging`. Actual device acceptance must cover launch, camera permission and cancellation, QR decoding and rejection, manual address errors, navigation/back behavior and document export. A successful build alone does not prove those flows or a live Defender connection.
 
+## Interface update 1.0.3
+
+All workspace cards share the approved translucent glass surface in light and dark appearance, with soft violet lighting, a fine highlighted edge and readable text. The native connection card follows the same material treatment. Browsers without backdrop blur retain solid readable cards; reduced-transparency, forced-color and print modes use an opaque surface. Existing theme choices, pull-to-refresh, navigation, QR connection and passkey access are preserved.
+
+The signed update uses the existing app identity and update certificate, so it can be installed over an earlier release without uninstalling it.
+
 ## Primary implementation references
 
 - [Android local WebView content](https://developer.android.com/develop/ui/views/layout/webapps/load-local-content)

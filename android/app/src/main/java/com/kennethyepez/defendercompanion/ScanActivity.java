@@ -133,7 +133,7 @@ public final class ScanActivity extends ComponentActivity {
     if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
     LinearLayout page = new LinearLayout(this);
     page.setOrientation(LinearLayout.VERTICAL);
-    page.setBackgroundColor(NativeAppearance.color(this, 0xFFF6F6F9, 0xFF121018));
+    page.setBackground(NativeAppearance.glassCanvas(this));
     page.setPadding(dp(24), dp(24), dp(24), dp(24));
     page.setOnApplyWindowInsetsListener((v, insets) -> {
       if (Build.VERSION.SDK_INT >= 30) {
