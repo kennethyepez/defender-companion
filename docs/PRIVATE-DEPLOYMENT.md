@@ -23,6 +23,14 @@ Use Node.js 24+ and Python 3 for the tests. Run `npm ci`, `npm run check`, copy 
 
 These steps change no Defender setting, inspection, endpoint isolation, quarantine or Microsoft grant. They do not authorize quarantined devices to contact LAN hosts. There is no public fallback.
 
+## Build a private package
+
+Run `npm run build:private-package -- .local/private-release` after the normal checks. The packager reuses the audited installed production dependencies and excludes frontend-only modules from the backend. It creates no credentials and makes no network requests. Host-specific administrative plans, setup tokens and receipts stay private, outside the published repository.
+
+Use the owner's normal UAC flow for installation; cancellation must stop that attempt. Do not enable SSH or create an administrative backchannel. Verify the real service token, file-access denials, loopback-only listener and preservation of existing Serve routes after installation. Genuine owner passkey enrollment is still required before claiming live acceptance.
+
+Different HTTPS ports on one Serve hostname share cookie scope. The workspace also requires a session-bound proof stored only in tab memory. A cookie received by another port cannot read the workspace or manage access without it. Reloading requires a fresh sign-in; the proof is never returned through a GET or status response.
+
 ## Acceptance and rollback
 
 Automated protocol tests and public builds do not prove production deployment. Acceptance also needs actual service-token ACL checks, private tailnet/user denial checks, source freshness and owner passkey use. Until then production remains pending, with the entrypoint failing closed.

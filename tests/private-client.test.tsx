@@ -76,6 +76,39 @@ it('rejects a private response that arrives after sign-out', async () => {
   complete(response({ secret: 'not restored' }));
   await expect(pending).rejects.toMatchObject({ status: 401 });
 });
+it('uses a binding only in tab memory and clears it after sign-out', async () => {
+  const binding = 'a'.repeat(64);
+  const calls: RequestInit[] = [];
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, options) => {
+    calls.push(options!);
+    return response({}, calls.length === 1 ? { 'x-workspace-binding': binding } : {});
+  });
+  await request('auth/login/verify', {});
+  await request('workspace');
+  expect(calls[1].headers).toMatchObject({ 'X-Workspace-Binding': binding });
+  await request('auth/sessions/revoke-all', {});
+  expect(calls[2].headers).toMatchObject({ 'X-Workspace-Binding': binding });
+  await request('auth/status');
+  expect(calls[3].headers).not.toHaveProperty('X-Workspace-Binding');
+});
+it('does not restore a browser proof from a late authentication response after logout', async () => {
+  let complete!: (value: Response) => void;
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    )
+    .mockResolvedValue(response({}));
+  const pending = request('auth/login/verify', {});
+  clearPrivateSession();
+  complete(response({}, { 'x-workspace-binding': 'b'.repeat(64) }));
+  await expect(pending).rejects.toMatchObject({ status: 401 });
+  await request('auth/status');
+  expect(fetcher.mock.calls[1][1]?.headers).not.toHaveProperty('X-Workspace-Binding');
+});
 it('clears tab session at idle or absolute expiry without another API read', async () => {
   const ended = vi.fn();
   window.addEventListener('dc-session-ended', ended);

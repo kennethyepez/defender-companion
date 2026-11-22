@@ -11,10 +11,12 @@ export class ApiError extends Error {
 let sessionEpoch = 0;
 let absoluteExpiry = 0;
 let idleExpiry = 0;
+let browserBinding = '';
 export function clearPrivateSession() {
   sessionEpoch += 1;
   absoluteExpiry = 0;
   idleExpiry = 0;
+  browserBinding = '';
   window.dispatchEvent(new Event('dc-session-ended'));
 }
 export function expireSessionIfNeeded(now = Date.now()) {
@@ -22,11 +24,15 @@ export function expireSessionIfNeeded(now = Date.now()) {
     clearPrivateSession();
 }
 export async function request<T>(path: string, body?: unknown): Promise<T> {
+  const bindingForRequest = browserBinding;
   if (['auth/logout', 'auth/sessions/revoke-all'].includes(path)) clearPrivateSession();
   const epoch = sessionEpoch;
   const response = await fetch(`/api/${path}`, {
     method: body === undefined ? 'GET' : 'POST',
-    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+    headers: {
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      ...(bindingForRequest ? { 'X-Workspace-Binding': bindingForRequest } : {}),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
     credentials: 'same-origin',
     signal: AbortSignal.timeout(20000),
@@ -58,6 +64,13 @@ export async function request<T>(path: string, body?: unknown): Promise<T> {
       value.signedOut)
   )
     clearPrivateSession();
+  if (
+    ['auth/register/verify', 'auth/login/verify', 'auth/recover', 'auth/recovery/rotate'].includes(
+      path,
+    )
+  ) {
+    browserBinding = response.headers.get('x-workspace-binding') ?? '';
+  }
   const absolute = Number(response.headers.get('x-session-expires-at'));
   const idle = Number(response.headers.get('x-session-idle-expires-at'));
   if (Number.isFinite(absolute) && absolute > 0) absoluteExpiry = absolute;

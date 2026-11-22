@@ -76,6 +76,7 @@ export class Store {
       this.db.prepare("INSERT OR IGNORE INTO metadata VALUES('recovery-initialized','yes')").run();
     this.db.prepare('DELETE FROM sessions WHERE created=0 OR last_seen=0').run();
     this.db.prepare("INSERT OR IGNORE INTO metadata VALUES('audit-salt',?)").run(opaqueToken());
+    this.db.prepare("INSERT OR IGNORE INTO metadata VALUES('binding-secret',?)").run(opaqueToken());
   }
   private addColumn(
     table: 'credentials' | 'sessions' | 'challenges',
@@ -99,6 +100,24 @@ export class Store {
   }
   enrolled() {
     return !!this.db.prepare('SELECT id FROM credentials WHERE revoked IS NULL LIMIT 1').get();
+  }
+  browserBinding(token: string) {
+    const secret = (
+      this.db.prepare("SELECT value FROM metadata WHERE key='binding-secret'").get() as {
+        value: string;
+      }
+    ).value;
+    return createHmac('sha256', secret)
+      .update('browser-binding|' + token)
+      .digest('hex');
+  }
+  matchesBinding(token: string | undefined, binding: unknown) {
+    return (
+      !!token &&
+      typeof binding === 'string' &&
+      /^[a-f0-9]{64}$/.test(binding) &&
+      equalSecret(this.browserBinding(token), binding)
+    );
   }
   userId(): string {
     const row = this.db.prepare("SELECT value FROM metadata WHERE key='user-id'").get() as

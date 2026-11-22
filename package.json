@@ -11,6 +11,7 @@
     "dev": "vite --host 127.0.0.1",
     "dev:server": "tsx watch server/main.ts",
     "build": "tsc -b && vite build",
+    "build:private-package": "node deploy/build-private-package.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "start": "tsx server/main.ts",
     "typecheck": "tsc -b",
@@ -18,8 +19,8 @@
     "test:watch": "vitest",
     "test:handoff": "python -I -m unittest discover -s tools -p test_*.py -v",
     "check": "npm run typecheck && npm test && npm run test:handoff && npm run build",
-    "format": "prettier --write src server tests docs *.md *.json *.ts .github",
-    "format:check": "prettier --check src server tests docs *.md *.json *.ts .github"
+    "format": "prettier --write src server tests docs deploy/*.mjs *.md *.json *.ts .github",
+    "format:check": "prettier --check src server tests docs deploy/*.mjs *.md *.json *.ts .github"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
