@@ -85,6 +85,14 @@ export async function loadRecords(resource: string): Promise<RecordItem[]> {
   return result.items;
 }
 export function downloadJson(name: string, data: unknown) {
+  const native = (window as Window & { DefenderNative?: { postMessage(value: string): void } })
+    .DefenderNative;
+  if (native && data && typeof data === 'object' && 'mode' in data && data.mode === 'sample') {
+    native.postMessage(
+      JSON.stringify({ action: 'exportDemo', json: JSON.stringify(data, null, 2) }),
+    );
+    return 'save-dialog' as const;
+  }
   const url = URL.createObjectURL(
     new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
   );
@@ -93,4 +101,5 @@ export function downloadJson(name: string, data: unknown) {
   anchor.download = name;
   anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return 'download' as const;
 }

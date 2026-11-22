@@ -1598,3 +1598,14 @@ dialog::backdrop {
     background: #fff;
   }
 }
+.connection-qr img {
+  display: block;
+  width: min(100%, 280px);
+  height: auto;
+  margin: 18px auto;
+  border-radius: 12px;
+}
+.connection-address {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}

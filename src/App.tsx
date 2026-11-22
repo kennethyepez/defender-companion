@@ -57,6 +57,7 @@ import {
 import { Access } from './Access';
 import { SecurityControls } from './SecurityControls';
 import { Freshness } from './Freshness';
+import { ConnectionQr } from './ConnectionQr';
 import { ApiError, downloadJson, loadDataset, loadRecords, request } from './api';
 
 const mainNavigation = [
@@ -1056,12 +1057,16 @@ export function App() {
                     });
                     return;
                   }
-                  downloadJson('defender-companion-snapshot.json', {
+                  const exportResult = downloadJson('defender-companion-snapshot.json', {
                     ...dataset,
                     localReviews: reviews,
                     exportedAt: new Date().toISOString(),
                   });
-                  tell('Snapshot exported.');
+                  tell(
+                    exportResult === 'save-dialog'
+                      ? 'Choose where to save the demo export.'
+                      : 'Snapshot download started.',
+                  );
                 }}
               >
                 <Download size={17} />
@@ -1235,6 +1240,7 @@ export function App() {
             {dataset.warnings.map((w) => (
               <Notice key={w}>{w}</Notice>
             ))}
+            {live && loadState === 'ready' && <ConnectionQr />}
             <ButtonLink href="permissions" secondary>
               View permission scope
             </ButtonLink>

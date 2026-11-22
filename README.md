@@ -2,7 +2,7 @@
 
 A mobile-first workspace for reviewing security alerts, following evidence and understanding device exposure. Built with React, TypeScript and an optional passkey-protected Node server.
 
-**[Explore the public demo](https://kennethyepez.github.io/defender-companion/)** · [Architecture](docs/ARCHITECTURE.md) · [Security model](SECURITY.md) · [Private deployment](docs/PRIVATE-DEPLOYMENT.md)
+**[Explore the public demo](https://kennethyepez.github.io/defender-companion/)** · [Architecture](docs/ARCHITECTURE.md) · [Security model](SECURITY.md) · [Private deployment](docs/PRIVATE-DEPLOYMENT.md) · [Android app](docs/ANDROID.md)
 
 ![Desktop overview](docs/screenshots/overview-desktop.jpg)
 
@@ -22,6 +22,7 @@ Open the local URL printed by Vite. For a production build, run `npm run build`,
 ## What you can review
 
 - 46 English screens with responsive layouts, search, filters and an evidence-to-review flow.
+- An Android shell with an offline workspace, native QR camera/image selection, scoped exports and private passkey access through the browser. Connection QRs contain an address only.
 - A fixture-only public demo with local review notes and exports. It makes no Microsoft requests.
 - An optional private, alert-only workspace using the output of an existing hourly collector. The backend has no Microsoft credential and no additional collector or notification transport.
 - Real FIDO2/WebAuthn access with one-use challenges, user verification, action-bound step-up, revocation, scoped recovery and bounded redacted security history.
