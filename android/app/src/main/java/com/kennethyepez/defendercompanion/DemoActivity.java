@@ -78,13 +78,23 @@ public final class DemoActivity extends ComponentActivity {
         .getDecorView()
         .setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+    if (Build.VERSION.SDK_INT >= 30) {
+      int lightBars =
+          android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+              | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+      getWindow().getInsetsController().setSystemBarsAppearance(lightBars, lightBars);
+    }
     FrameLayout frame = new FrameLayout(this);
     frame.setBackgroundColor(Color.rgb(246, 246, 249));
     frame.setOnApplyWindowInsetsListener((v, insets) -> {
       if (Build.VERSION.SDK_INT >= 30) {
         android.graphics.Insets s =
-            insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
+            insets.getInsets(
+                WindowInsets.Type.systemBars()
+                    | WindowInsets.Type.displayCutout()
+                    | WindowInsets.Type.ime());
         v.setPadding(s.left, s.top, s.right, s.bottom);
+        return WindowInsets.CONSUMED;
       }
       return insets;
     });

@@ -5,9 +5,9 @@ The signed Android app keeps the approved English interface and includes the 46-
 ## Connect a private workspace
 
 1. Connect the phone to the same authorized private network as the workspace.
-2. On the authenticated workspace, open **More → Data connections → Show connection QR**.
-3. In Android, choose **Scan connection QR**, then **Use camera** or **Choose QR image**. Alternatively, enter the private HTTPS address.
-   4ירן+4. Check the address and choose **Open private workspace**. The app validates the service over normal system-trusted TLS, then asks before opening the browser. Sign in with your passkey there.
+2. On the authenticated workspace, open **More → Connection → Show connection QR**.
+3. In Android, choose **Scan connection QR**, then **Use camera** or **Choose QR image**. Alternatively, choose **Enter address instead**.
+4. Check the address and choose **Open workspace**. The app validates the service over normal system-trusted TLS, then asks before opening the browser. Sign in with your passkey there.
 
 The QR contains only the workspace origin: no Microsoft credentials, bootstrap token, session cookie, recovery code or passkey. Scanning never opens a URL or initiates a connection by itself. Only strict HTTPS `.ts.net` origins and allowed ports are accepted. Redirects, credentials, paths, query strings and fragments are rejected. Network failures remain errors; the offline demo is never presented as real tenant data.
 
@@ -21,6 +21,12 @@ Private access uses the browser’s real WebAuthn/passkey flow in a Custom Tab. 
 - The native app saves the workspace address only. Authentication remains in the browser. The offline demo’s fictional notes and preferences stay in its separate local WebView storage.
 - The offline renderer loads packaged assets only. Network resources, mixed content, pop-ups, file/content access, cookies and runtime permissions are blocked. Its export bridge accepts only bounded fictional snapshots from the exact asset origin and main frame.
 - App backup is disabled. Human sign-in and recovery remain owner actions.
+
+## Interface update 1.0.1
+
+Connection starts with a QR action, a manual-address disclosure and a visible offline demo. The workspace leads with the actual priority alert and review action, followed by compact counts, device context and activity. Five equal navigation targets sit directly above Android navigation. Text follows system scaling rather than overriding accessibility preferences.
+
+The native container owns system, cutout and keyboard insets and consumes them once. The bundled document marks its Android host so CSS does not add another bottom safe area. Regular web browsers retain their own safe-area support. See [Android window insets](https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets) and [edge-to-edge views](https://developer.android.com/develop/ui/views/layout/edge-to-edge).
 
 ## Build and sign
 

@@ -30,7 +30,7 @@ import {
   X,
 } from 'lucide-react';
 import { sampleData, records as sampleRecords } from './sample-data';
-import { filterAlerts } from './selectors';
+import { filterAlerts, priorityAlert } from './selectors';
 import {
   formatDate,
   safeRead,
@@ -78,9 +78,26 @@ const workspaceLinks: Screen[] = [
   'entities',
   'reports',
 ];
-const preferenceDefaults = { notifications: true, spoken: false, repeat: false };
+const preferenceDefaults = { notifications: false, spoken: false, repeat: false };
 type Preferences = typeof preferenceDefaults;
 type Review = { note: string; outcome: string; reviewedAt: string };
+function resourceIcon(resource: string) {
+  const Icon =
+    (
+      {
+        incidents: Bell,
+        vulnerabilities: AlertTriangle,
+        recommendations: ShieldCheck,
+        investigations: Search,
+        actions: Activity,
+        software: Layers3,
+        indicators: SquareTerminal,
+        entities: Database,
+        reports: FileText,
+      } as Record<string, typeof Bell>
+    )[resource] ?? Folder;
+  return <Icon size={20} />;
+}
 function readPreferences() {
   return safeRead(
     'dc.preferences',
@@ -237,6 +254,19 @@ export function App() {
     : [];
   const currentRecord = recordItems.find((item) => item.id === route.id) ?? recordItems[0];
   const counts = summarize(dataset.alerts);
+  const priority = priorityAlert(dataset.alerts);
+  const detailHeading =
+    route.screen === 'settings'
+      ? 'More'
+      : route.screen === 'alert'
+        ? alert?.title
+        : route.screen === 'device'
+          ? device?.name
+          : ['process', 'file', 'registry'].includes(route.screen)
+            ? alert?.evidence.find((item) => item.type === route.screen)?.name
+            : listResource && route.screen !== listResource
+              ? currentRecord?.name
+              : undefined;
   const alertRoute = (target: string) => `${target}${alert ? `/${alert.id}` : ''}`;
   const deviceRoute = (target: string) => `${target}${device ? `/${device.id}` : ''}`;
   const activeNav =
@@ -274,7 +304,11 @@ export function App() {
               subtitle={`${d.role} · ${d.isolation === 'isolated' ? 'Isolated' : d.health}`}
               href={`device/${d.id}`}
               icon={<Monitor size={21} />}
-              trailing={<span className={`risk-dot ${d.risk}`} aria-label={`Risk: ${d.risk}`} />}
+              trailing={
+                <Badge tone={d.risk}>
+                  {d.risk === 'none' ? 'No known risk' : `${d.risk} risk`}
+                </Badge>
+              }
             />
           ))}
         {!dataset.devices.length && <p className="inset">No device records are available.</p>}
@@ -401,10 +435,9 @@ export function App() {
       if (route.screen === listResource)
         return (
           <>
-            <p className="lead">
-              {listResource === 'actions'
-                ? 'Past actions and their recorded outcomes.'
-                : 'Start with the record that needs your attention.'}
+            <p className="list-summary">
+              {recordItems.length} {recordItems.length === 1 ? 'record' : 'records'} in this
+              snapshot
             </p>
             <div className="card list-card">
               {recordItems.map((item) => (
@@ -413,17 +446,17 @@ export function App() {
                   title={item.name}
                   subtitle={item.subtitle}
                   href={`${detailRoutes[listResource]}/${item.id}`}
-                  icon={<Folder size={20} />}
+                  icon={resourceIcon(listResource)}
                   trailing={<Badge tone={item.severity}>{item.status}</Badge>}
                 />
               ))}
               {!recordItems.length && <p className="inset">No records returned for this view.</p>}
             </div>
-            <Notice>
-              {live
-                ? 'Read-only records. Availability depends on your permissions, license and retention.'
-                : 'Fictional records for the public demo. No tenant is connected.'}
-            </Notice>
+            {live && (
+              <Notice>
+                Read-only records. Availability depends on your permissions, license and retention.
+              </Notice>
+            )}
           </>
         );
       if (!currentRecord)
@@ -439,7 +472,6 @@ export function App() {
       return (
         <>
           <Badge tone={currentRecord.severity}>{currentRecord.status}</Badge>
-          <h2 className="detail-title">{currentRecord.name}</h2>
           <p>{currentRecord.description}</p>
           <div className="card">
             <Facts items={currentRecord.facts} />
@@ -471,63 +503,62 @@ export function App() {
       case 'home':
         return (
           <>
-            <p className="lead">The important things, before you get on with your day.</p>
             <div className="overview-grid">
               <div className={`card priority-card ${counts.open ? 'attention' : ''}`}>
                 <div className="card-top">
-                  <Badge tone={counts.open ? 'high' : live ? '' : 'success'}>
-                    {counts.open
-                      ? 'Needs your review'
+                  <Badge tone={priority?.severity ?? (live ? '' : 'success')}>
+                    {priority
+                      ? `${priority.severity} priority`
                       : live
                         ? 'No open alerts in snapshot'
-                        : 'Up to date'}
+                        : 'No open alerts'}
                   </Badge>
-                  <ShieldCheck size={23} />
+                  <span className="priority-label">
+                    {priority ? 'Needs review' : 'Current snapshot'}
+                  </span>
                 </div>
-                <h2>
-                  {counts.open
-                    ? `${counts.open === 1 ? 'One alert needs' : `${counts.open} alerts need`} your attention`
-                    : 'No active alerts in this snapshot'}
-                </h2>
-                <p>
-                  {dataset.alerts.find((a) => a.status !== 'resolved')?.description ??
-                    'Check the activity history and keep your next review in view.'}
+                <h2>{priority?.title ?? 'No active alerts in this snapshot'}</h2>
+                {priority && (
+                  <div className="priority-context">
+                    <Monitor size={15} />
+                    <span>
+                      {dataset.devices.find((d) => d.id === priority.deviceId)?.name ??
+                        'Unreported device'}
+                    </span>
+                    <span aria-hidden="true">·</span>
+                    <time dateTime={priority.createdAt}>{formatDate(priority.createdAt)}</time>
+                  </div>
+                )}
+                <p className="priority-description">
+                  {priority?.description ?? 'Review recent activity and check device health.'}
                 </p>
-                <ButtonLink
-                  href={
-                    counts.open
-                      ? `alert/${dataset.alerts.find((a) => a.status !== 'resolved')!.id}`
-                      : 'activity'
-                  }
-                >
-                  {counts.open ? 'Review the alert' : 'View activity'}
+                <ButtonLink href={priority ? `alert/${priority.id}` : 'activity'}>
+                  {priority ? 'Review the alert' : 'View activity'}
                 </ButtonLink>
-                <div className="meta">
-                  <Clock3 size={14} />
-                  {live ? 'Last read' : 'Sample snapshot'} · {formatDate(dataset.fetchedAt)}
-                </div>
               </div>
               <div className="overview-aside">
-                <div className="stats">
-                  <div>
-                    <strong>{dataset.devices.length}</strong>
-                    <span>Devices in view</span>
+                <div className="card workspace-summary">
+                  <h2>Workspace summary</h2>
+                  <div className="summary-metrics">
+                    <a href="#devices">
+                      <strong>{dataset.devices.length}</strong>
+                      <span>Devices</span>
+                    </a>
+                    <a href="#alerts">
+                      <strong>{counts.open}</strong>
+                      <span>Open alerts</span>
+                    </a>
+                    <a href="#activity">
+                      <strong>{counts.reviewed}</strong>
+                      <span>Resolved</span>
+                    </a>
                   </div>
-                  <div>
-                    <strong>{counts.open}</strong>
-                    <span>Alerts to review</span>
+                  <div className="summary-updated">
+                    <Clock3 size={14} />
+                    <span>
+                      {live ? 'Last read' : 'Demo snapshot'} · {formatDate(dataset.fetchedAt)}
+                    </span>
                   </div>
-                </div>
-                <div className="card lavender">
-                  <h3>Your next step</h3>
-                  <h2>Establish the origin</h2>
-                  <p>
-                    Compare the process, its evidence and the authorized change before classifying
-                    an alert.
-                  </p>
-                  <a className="text-link" href={`#${alertRoute('evidence')}`}>
-                    Examine the evidence <ArrowRight size={16} />
-                  </a>
                 </div>
               </div>
             </div>
@@ -616,7 +647,6 @@ export function App() {
               <Badge tone={alert.severity}>{alert.severity}</Badge>
               <Badge>{alert.status === 'resolved' ? 'Resolved in source' : 'Needs review'}</Badge>
             </div>
-            <h2 className="detail-title">{alert.title}</h2>
             {live && alert.sourceUrl && (
               <a className="text-link" href={alert.sourceUrl} target="_blank" rel="noreferrer">
                 Open source alert in Defender <ExternalLink size={15} />
@@ -627,6 +657,7 @@ export function App() {
               {dataset.devices.find((d) => d.id === alert.deviceId)?.name ?? alert.deviceId} ·{' '}
               {formatDate(alert.createdAt)}
             </p>
+            <ButtonLink href={alertRoute('evidence')}>Review evidence</ButtonLink>
             <div className="two-columns">
               <Section title="What we know">
                 <div className="card">
@@ -635,7 +666,7 @@ export function App() {
                     items={[
                       ['Category', alert.category],
                       ['Source status', alert.status],
-                      ['Origin confirmed', 'Review the evidence'],
+                      ['Origin', 'Not confirmed'],
                     ]}
                   />
                 </div>
@@ -662,12 +693,6 @@ export function App() {
               </Section>
             </div>
             <div className="card list-card">
-              <Row
-                title="Review evidence"
-                subtitle={`${alert.evidence.length} evidence items`}
-                href={alertRoute('evidence')}
-                icon={<Folder />}
-              />
               <Row
                 title="Inspect the device"
                 subtitle="Protection and isolation context"
@@ -721,7 +746,6 @@ export function App() {
         return evidence ? (
           <>
             <Badge>{evidence.verdict}</Badge>
-            <h2 className="detail-title break-word">{evidence.name}</h2>
             <div className="card">
               <Facts
                 items={[
@@ -790,7 +814,6 @@ export function App() {
                 <Monitor size={27} />
               </span>
               <div>
-                <h2>{device.name}</h2>
                 <p>
                   {device.os} · {device.role}
                 </p>
@@ -868,12 +891,18 @@ export function App() {
       case 'scans':
         return (
           <>
+            <p className="context-label">{device?.name ?? 'No device selected'}</p>
             <Notice>
               Scan requests and progress are not exposed by this app. No new scan is started.
             </Notice>
             {live ? (
               <Empty icon={<Clock3 />} title="Scan history is not connected">
                 Use the device timeline in Microsoft Defender to verify completed scans.
+              </Empty>
+            ) : device?.name !== 'Nova' ? (
+              <Empty icon={<Clock3 />} title="No scan history for this device">
+                This demo snapshot has no completed scan for {device?.name ?? 'the selected device'}
+                .
               </Empty>
             ) : (
               <div className="card">
@@ -882,8 +911,8 @@ export function App() {
                 <Facts
                   items={[
                     ['Device', 'Nova'],
-                    ['Started', 'Jun 17, 21:00 UTC'],
-                    ['Finished', 'Jun 17, 22:18 UTC'],
+                    ['Started', formatDate('2026-06-17T21:00:00Z')],
+                    ['Finished', formatDate('2026-06-17T22:18:00Z')],
                     ['Reported threats', '0 in this example'],
                   ]}
                 />
@@ -899,6 +928,7 @@ export function App() {
             </Notice>
             <div className="card">
               <CheckList
+                neutral
                 items={[
                   'No device isolation or release',
                   'No scan, quarantine or remediation requests',
@@ -915,6 +945,14 @@ export function App() {
       case 'review':
         return alert ? (
           <>
+            <div className="card review-context">
+              <Badge tone={alert.severity}>{alert.severity}</Badge>
+              <h2>{alert.title}</h2>
+              <p>
+                {dataset.devices.find((d) => d.id === alert.deviceId)?.name ?? alert.deviceId} ·{' '}
+                {formatDate(alert.createdAt)}
+              </p>
+            </div>
             <Notice>
               {live
                 ? 'Private notes stay only in this tab’s memory and disappear on sign-out, expiry or reload. They are never included in exports.'
@@ -1085,8 +1123,8 @@ export function App() {
             {alert ? (
               <div className="card list-card">
                 <Row
-                  title={noticeRead ? 'Reminder acknowledged' : 'An alert needs review'}
-                  subtitle={alert.title}
+                  title={alert.title}
+                  subtitle={`${dataset.devices.find((d) => d.id === alert.deviceId)?.name ?? alert.deviceId} · ${formatDate(alert.createdAt)}`}
                   href="notification"
                   icon={<Bell />}
                   trailing={<Badge>{noticeRead ? 'Read' : 'Unread'}</Badge>}
@@ -1106,8 +1144,14 @@ export function App() {
             <Badge tone={noticeRead ? 'success' : 'high'}>
               {noticeRead ? 'Acknowledged' : 'Review required'}
             </Badge>
-            <h2 className="detail-title">Review the evidence before responding</h2>
-            <p>{alert?.title ?? 'No alert is loaded.'}</p>
+            <h2 className="reminder-title">{alert?.title ?? 'No alert is loaded.'}</h2>
+            {alert && (
+              <p className="meta">
+                {dataset.devices.find((d) => d.id === alert.deviceId)?.name ?? alert.deviceId} ·{' '}
+                {formatDate(alert.createdAt)}
+              </p>
+            )}
+            <ButtonLink href={alertRoute('alert')}>Review alert</ButtonLink>
             <div className="card lavender">
               <Steps
                 items={[
@@ -1130,25 +1174,28 @@ export function App() {
             >
               {noticeRead ? 'Acknowledged' : 'Acknowledge reminder'}
             </button>
-            <ButtonLink href={alertRoute('alert')}>Open alert</ButtonLink>
           </>
         );
       case 'channels':
         return (
           <>
             <Notice>
-              These are local preferences for a future notification integration. They do not enable
-              push, audio, Alexa or other external services.
+              Delivery is not connected. These controls only save your preferred options on this
+              device; they cannot send notifications or play audio.
             </Notice>
             <div className="card">
               {(
                 [
-                  ['notifications', 'Phone notifications', 'Preferred delivery channel'],
-                  ['spoken', 'Spoken summary', 'A short explanation and recommended next step'],
+                  [
+                    'notifications',
+                    'Prefer phone notifications',
+                    'Preference only · Delivery not connected',
+                  ],
+                  ['spoken', 'Prefer spoken summaries', 'Preference only · Audio not connected'],
                   [
                     'repeat',
-                    'Repeat unacknowledged reminders',
-                    'One follow-up for a high-priority alert',
+                    'Prefer a follow-up reminder',
+                    'Preference only · Repeats not connected',
                   ],
                 ] as const
               ).map(([key, title, sub]) => (
@@ -1174,45 +1221,53 @@ export function App() {
       case 'settings':
         return (
           <>
-            <div className="card list-card">
-              <Row
-                title="Connection"
-                subtitle={live ? 'Private server' : 'Public demo · sample data'}
-                href="connections"
-                icon={<Database />}
-              />
-              <Row
-                title="API permissions"
-                subtitle="Least-privilege reading access"
-                href="permissions"
-                icon={<KeyRound />}
-              />
-              <Row
-                title="Security & privacy"
-                subtitle="Authentication, exports and local data"
-                href="security"
-                icon={<ShieldCheck />}
-              />
-              <Row
-                title="Notification preferences"
-                subtitle="Local delivery preferences"
-                href="channels"
-                icon={<Bell />}
-              />
-              <Row
-                title="Passkey access"
-                subtitle="Private workspace authentication"
-                href="access"
-                icon={<Fingerprint />}
-              />
-            </div>
-            <Section title="Explore the workspace">
+            <Section title="Workspaces">
               <div className="card list-card">
                 {workspaceLinks.map((id) => (
-                  <Row key={id} title={titles[id]} href={id} icon={<Folder size={18} />} />
+                  <Row key={id} title={titles[id]} href={id} icon={resourceIcon(id)} />
                 ))}
               </div>
             </Section>
+            <Section title="Settings">
+              <div className="card list-card">
+                <Row
+                  title="Connection"
+                  subtitle={live ? 'Private server' : 'Public demo · sample data'}
+                  href="connections"
+                  icon={<Database />}
+                />
+                <Row
+                  title="API permissions"
+                  subtitle="Least-privilege reading access"
+                  href="permissions"
+                  icon={<KeyRound />}
+                />
+                <Row
+                  title="Security & privacy"
+                  subtitle="Authentication, exports and local data"
+                  href="security"
+                  icon={<ShieldCheck />}
+                />
+                <Row
+                  title="Notification preferences"
+                  subtitle="Local delivery preferences"
+                  href="channels"
+                  icon={<Bell />}
+                />
+                <Row
+                  title="Passkey access"
+                  subtitle="Private workspace authentication"
+                  href="access"
+                  icon={<Fingerprint />}
+                />
+              </div>
+            </Section>
+            {!live && (
+              <button className="button secondary" onClick={() => setMenu(true)}>
+                <Layers3 size={18} />
+                Explore all 46 screens
+              </button>
+            )}
           </>
         );
       case 'connections':
@@ -1222,7 +1277,7 @@ export function App() {
               <Badge tone={live && loadState === 'ready' ? 'success' : ''}>
                 {live ? 'Private server mode' : 'Sample data mode'}
               </Badge>
-              <h2>{live ? 'A server-side connection' : 'A safe public demonstration'}</h2>
+              <h2>{live ? 'Private connection' : 'No private workspace connected'}</h2>
               <p>
                 {live
                   ? 'Passkeys protect the last snapshot from your existing hourly collector. This workspace has no Microsoft credentials and makes no Microsoft API calls.'
@@ -1289,7 +1344,14 @@ export function App() {
                 <SecurityControls />
               ))}
             <div className="card">
+              <h2>Private workspace safeguards</h2>
+              <p>
+                {live
+                  ? 'These are the service’s access controls, not a device health report.'
+                  : 'Available in the private service. No private session is active in this demo.'}
+              </p>
               <CheckList
+                neutral
                 items={[
                   'Passkeys with verified origin, RP ID and user verification',
                   'Single-use challenges and one-time recovery codes',
@@ -1419,7 +1481,8 @@ export function App() {
             title="This view couldn’t be loaded"
             action={<ButtonLink href="home">Return to overview</ButtonLink>}
           >
-            Your notes remain saved. Check the connection and try loading the view again.
+            Return to Overview to continue, or review your connection from More. This example does
+            not change your saved notes.
           </Empty>
         );
       case 'forbidden':
@@ -1565,20 +1628,15 @@ export function App() {
             </button>
           </div>
         </header>
-        <main id="main-content" tabIndex={-1} className="main">
+        <main id="main-content" tabIndex={-1} className="main" data-screen={route.screen}>
           <div className="page-meta">
-            <span>{live ? 'PRIVATE WORKSPACE' : 'PUBLIC DEMO · FICTIONAL RECORDS'}</span>
-            <button className="text-button" onClick={() => setMenu(true)}>
-              Explore all 46 screens <Layers3 size={14} />
-            </button>
+            <span className="workspace-mode">
+              <i aria-hidden="true" />
+              {live ? 'Private workspace' : 'Demo workspace'}
+            </span>
+            {!live && <span className="workspace-disclosure">Fictional data</span>}
           </div>
-          <PageHeader
-            screen={route.screen}
-            back={contextualBack}
-            subtitle={
-              route.screen === 'home' ? 'A clearer view of what needs your attention.' : undefined
-            }
-          />
+          <PageHeader screen={route.screen} title={detailHeading} back={contextualBack} />
           {live && <Freshness data={dataset} visible={loadState === 'ready'} />}
           {live &&
             route.screen !== 'connections' &&
@@ -1606,7 +1664,14 @@ export function App() {
             href={`#${item.id}`}
             aria-current={activeNav === item.id ? 'page' : undefined}
           >
-            <item.icon size={22} />
+            <span className="nav-icon">
+              <item.icon size={22} />
+              {item.id === 'alerts' && counts.open > 0 && (
+                <span className="mobile-nav-count" aria-label={`${counts.open} open alerts`}>
+                  {counts.open > 9 ? '9+' : counts.open}
+                </span>
+              )}
+            </span>
             <span>{item.label}</span>
           </a>
         ))}

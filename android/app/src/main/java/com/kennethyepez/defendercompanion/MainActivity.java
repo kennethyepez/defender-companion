@@ -44,6 +44,7 @@ public final class MainActivity extends ComponentActivity {
   private EditText address;
   private TextView status;
   private Button connect;
+  private LinearLayout manualPanel;
   private SharedPreferences preferences;
   private final ActivityResultLauncher<Intent> scan =
       registerForActivityResult(
@@ -53,6 +54,7 @@ public final class MainActivity extends ComponentActivity {
             try {
               String origin = WorkspaceAddress.normalize(result.getData().getStringExtra("origin"));
               address.setText(origin);
+              manualPanel.setVisibility(View.VISIBLE);
               status.setTextColor(muted);
               status.setText("QR code read. Check the address, then open your workspace.");
             } catch (IllegalArgumentException invalid) {
@@ -115,60 +117,86 @@ public final class MainActivity extends ComponentActivity {
         .getDecorView()
         .setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+    if (Build.VERSION.SDK_INT >= 30) {
+      int lightBars =
+          android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+              | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+      getWindow().getInsetsController().setSystemBarsAppearance(lightBars, lightBars);
+    }
     ScrollView scroll = new ScrollView(this);
     scroll.setFillViewport(true);
     scroll.setBackgroundColor(canvas);
     scroll.setOnApplyWindowInsetsListener((v, insets) -> {
       if (Build.VERSION.SDK_INT >= 30) {
         android.graphics.Insets s =
-            insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
+            insets.getInsets(
+                WindowInsets.Type.systemBars()
+                    | WindowInsets.Type.displayCutout()
+                    | WindowInsets.Type.ime());
         v.setPadding(s.left, s.top, s.right, s.bottom);
+        return WindowInsets.CONSUMED;
       } else v.setPadding(0, 0, 0, insets.getSystemWindowInsetBottom());
       return insets;
     });
     LinearLayout page = new LinearLayout(this);
     page.setOrientation(LinearLayout.VERTICAL);
-    page.setPadding(dp(24), dp(26), dp(24), dp(28));
+    page.setPadding(dp(24), dp(20), dp(24), dp(20));
     scroll.addView(page, new ScrollView.LayoutParams(-1, -2));
     LinearLayout brand = new LinearLayout(this);
     brand.setGravity(Gravity.CENTER_VERTICAL);
     ImageView icon = new ImageView(this);
     icon.setImageResource(R.drawable.ic_shield);
     icon.setContentDescription(null);
-    icon.setPadding(dp(11), dp(11), dp(11), dp(11));
-    icon.setBackground(shape(violet, 16));
-    brand.addView(icon, new LinearLayout.LayoutParams(dp(54), dp(54)));
-    TextView name = text("Defender\nCompanion", 18, ink, true);
+    icon.setPadding(dp(8), dp(8), dp(8), dp(8));
+    icon.setBackground(shape(violet, 12));
+    brand.addView(icon, new LinearLayout.LayoutParams(dp(40), dp(40)));
+    TextView name = text("Defender Companion", 16, ink, true);
     LinearLayout.LayoutParams nameLayout = new LinearLayout.LayoutParams(-1, -2);
     nameLayout.leftMargin = dp(12);
     brand.addView(name, nameLayout);
     add(page, brand, 0);
-    add(page, text("Choose your\nworkspace", 30, ink, true), 32);
-    add(
-        page,
-        text("Review alerts, follow the evidence and decide what comes next.", 15, muted, false),
-        10);
+    add(page, text("Connect your workspace", 27, ink, true), 28);
+    add(page, text("Your alerts, devices and next steps in one place.", 15, muted, false), 10);
     LinearLayout card = new LinearLayout(this);
     card.setOrientation(LinearLayout.VERTICAL);
-    card.setPadding(dp(20), dp(22), dp(20), dp(22));
-    card.setBackground(shape(Color.WHITE, 20));
-    add(page, card, 26);
-    add(card, text("Private workspace", 19, ink, true), 0);
-    add(card, text("Sign in with your passkey in your browser.", 14, muted, false), 6);
-    Button qr = button("Scan connection QR", false);
+    card.setPadding(dp(20), dp(20), dp(20), dp(16));
+    card.setBackground(shape(Color.WHITE, 18));
+    add(page, card, 24);
+    add(card, text("Private workspace", 17, ink, true), 0);
+    add(
+        card,
+        text(
+            "Scan your workspace QR, then sign in with your passkey in your browser.",
+            14,
+            muted,
+            false),
+        6);
+    Button qr = button("Scan connection QR", true);
     qr.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_qr, 0, 0, 0);
     qr.setCompoundDrawablePadding(dp(10));
+    qr.setCompoundDrawableTintList(ColorStateList.valueOf(Color.WHITE));
     qr.setOnClickListener(v -> scan.launch(new Intent(this, ScanActivity.class)));
-    add(card, qr, 20);
+    add(card, qr, 16);
+    Button manual = button("Enter address instead", false);
+    manual.setBackgroundColor(Color.TRANSPARENT);
+    manual.setOnClickListener(v ->
+        manualPanel.setVisibility(
+            manualPanel.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
+    add(card, manual, 6);
+    manualPanel = new LinearLayout(this);
+    manualPanel.setOrientation(LinearLayout.VERTICAL);
+    manualPanel.setVisibility(
+        preferences.getString("origin", "").isEmpty() ? View.GONE : View.VISIBLE);
+    add(card, manualPanel, 0);
     TextView label = text("Workspace address", 13, ink, true);
-    add(card, label, 22);
+    add(manualPanel, label, 8);
     address = new EditText(this);
     address.setId(R.id.workspace_address);
     label.setLabelFor(R.id.workspace_address);
     address.setTextSize(14);
     address.setTextColor(ink);
     address.setHintTextColor(muted);
-    address.setHint("https://computer.example.ts.net:18449");
+    address.setHint("Private workspace URL");
     address.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
     address.setSingleLine(true);
     address.setSelectAllOnFocus(false);
@@ -177,13 +205,13 @@ public final class MainActivity extends ComponentActivity {
     border.setStroke(dp(1), 0xFFE5E3EB);
     address.setBackground(border);
     address.setText(preferences.getString("origin", ""));
-    add(card, address, 8);
-    connect = button("Open private workspace", true);
+    add(manualPanel, address, 8);
+    connect = button("Open workspace", true);
     connect.setOnClickListener(v -> checkWorkspace());
-    add(card, connect, 16);
-    status = text("Use the private address provided during setup.", 13, muted, false);
+    add(manualPanel, connect, 12);
+    status = text("Use the address from your workspace setup.", 13, muted, false);
     status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-    add(card, status, 12);
+    add(manualPanel, status, 10);
     if (!preferences.getString("origin", "").isEmpty()) {
       Button forget = button("Forget address", false);
       forget.setOnClickListener(v -> {
@@ -192,15 +220,14 @@ public final class MainActivity extends ComponentActivity {
         status.setText("Address removed. Your browser sessions are unchanged.");
         v.setVisibility(View.GONE);
       });
-      add(card, forget, 12);
+      add(manualPanel, forget, 10);
     }
     Button demo = button("Explore offline demo", false);
     demo.setOnClickListener(v -> startActivity(new Intent(this, DemoActivity.class)));
-    add(page, demo, 24);
-    TextView sample =
-        text("Fictional alerts. All 46 screens. No account needed.", 13, muted, false);
+    add(page, demo, 20);
+    TextView sample = text("Fictional data · No account needed", 13, muted, false);
     sample.setGravity(Gravity.CENTER);
-    add(page, sample, 10);
+    add(page, sample, 6);
     Button privacy = button("Privacy & access", false);
     privacy.setBackgroundColor(Color.TRANSPARENT);
     privacy.setOnClickListener(v ->
@@ -216,7 +243,7 @@ public final class MainActivity extends ComponentActivity {
                     + " or choose a QR image without granting camera access.")
             .setPositiveButton("Done", null)
             .show());
-    add(page, privacy, 22);
+    add(page, privacy, 8);
     setContentView(scroll);
   }
 

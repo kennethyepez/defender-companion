@@ -36,6 +36,16 @@ Verify initial registration with user verification, a subsequent signed login, i
 
 The owner must register and use their own authenticator before a private production deployment is accepted. Physical PIN, biometric verification and credential custody are not part of the public demo.
 
+## Android 1.0.1 interface review
+
+An independent UI/UX reviewer inspected all 46 rendered screens before and after the changes. Findings led to a priority-first overview, object-specific headings, earlier evidence access, readable device risk, neutral descriptions of unavailable controls, and notification preferences that do not imply connected delivery.
+
+All 46 routes were rendered at 393 px and checked for overflow at 360 px. Browser checks exercised the five mobile destinations, alert-to-evidence navigation, selected-device scan history and catalog search/Escape behavior. Desktop layout was inspected separately.
+
+The signed APK was installed and opened in an Android 16/API 36 emulator. Actual screenshots covered native onboarding, gesture and three-button navigation, 130% system text, device rows and manual entry with the keyboard open. Scrolling revealed the complete connection button while retaining the keyboard. The reviewer inspected those renders and confirmed no remaining blocking visual finding in that scope. These checks do not claim acceptance on a physical Samsung or a connected private workspace.
+
+The release retains its update signing identity. Release assembly, release lint and Android parser tests passed. The web/server suite passed 128 tests, with one Windows-only symlink skip. An initial highly parallel run hit worker startup timeouts on the shared Windows host; the full single-worker run passed without relaxing production controls or security assertions.
+
 ## Current limits
 
 Hardening regressions cover stolen-session enrollment, real signed step-up, action/target/session binding, replay, parallel bootstrap, key/session revocation, recovery and last-key protection. Store tests check expiry, counters and audit pseudonyms. Handoff/boundary tests cover redaction, clock/failure/age/size bounds, private hosts and approved identities. Client tests reject late responses after logout and verify local-only freshness/expiry. Python standard-library tests validate the output whitelist and atomic failure preservation; they make no network requests.

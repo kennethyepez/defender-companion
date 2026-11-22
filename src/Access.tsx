@@ -6,7 +6,7 @@ import type {
 } from '@simplewebauthn/browser';
 import { KeyRound, ShieldCheck } from 'lucide-react';
 import { request } from './api';
-import { Notice, CheckList, ButtonLink } from './components';
+import { Notice, ButtonLink } from './components';
 import { approveAction } from './security-api';
 
 export function Access({
@@ -98,18 +98,19 @@ export function Access({
         <KeyRound size={30} />
       </div>
       <h2>
-        Your security.
-        <br />
-        Within reach.
+        {!live
+          ? 'Private access is not connected'
+          : status?.authenticated
+            ? 'You’re signed in'
+            : recovery
+              ? 'Recover your private access'
+              : 'Sign in to your workspace'}
       </h2>
-      <p>Review the evidence. Understand the risk. Decide what comes next.</p>
-      <CheckList
-        items={[
-          'Passkeys for private workspace access',
-          'Read-only access to Microsoft security data',
-          'Endpoint protections stay under your control',
-        ]}
-      />
+      <p>
+        {!live
+          ? 'Passkeys and recovery work through your private workspace. This demo uses fictional records.'
+          : 'Use your passkey to access the read-only security workspace.'}
+      </p>
       {!live ? (
         <>
           <Notice>
