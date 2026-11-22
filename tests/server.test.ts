@@ -1,3 +1,4 @@
+import { boundHeaders } from './helpers/binding';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../server/app';
 import { workspace } from './helpers/workspace';
@@ -47,7 +48,7 @@ describe('private boundary', () => {
           await instance.app.inject({
             method,
             url: '/api/alerts/123/close',
-            headers: { origin, cookie: cookie() },
+            headers: { origin, ...boundHeaders(instance.store, cookie()) },
           })
         ).statusCode,
       ).toBe(404);
@@ -59,7 +60,7 @@ describe('private boundary', () => {
         await instance.app.inject({
           method: 'GET',
           url: '/api/workspace',
-          headers: { cookie: `dc-session=${instance.store.createSession(true)}` },
+          headers: boundHeaders(instance.store, `dc-session=${instance.store.createSession(true)}`),
         })
       ).statusCode,
     ).toBe(401);
@@ -69,7 +70,7 @@ describe('private boundary', () => {
     const response = await instance.app.inject({
       method: 'GET',
       url: '/api/workspace',
-      headers: { cookie: cookie() },
+      headers: boundHeaders(instance.store, cookie()),
     });
     expect(response.statusCode).toBe(503);
     expect(response.body).not.toContain('SECRET');
@@ -82,7 +83,7 @@ describe('private boundary', () => {
     const result = await instance.app.inject({
       method: 'GET',
       url: '/api/workspace',
-      headers: { cookie: cookie() },
+      headers: boundHeaders(instance.store, cookie()),
     });
     expect(result.json().freshness.state).toBe('stale');
     expect(result.headers['cache-control']).toBe('no-store');
@@ -93,14 +94,14 @@ describe('private boundary', () => {
     await instance.app.inject({
       method: 'POST',
       url: '/api/auth/logout',
-      headers: { origin, cookie: session },
+      headers: { origin, ...boundHeaders(instance.store, session) },
     });
     expect(
       (
         await instance.app.inject({
           method: 'GET',
           url: '/api/workspace',
-          headers: { cookie: session },
+          headers: boundHeaders(instance.store, session),
         })
       ).statusCode,
     ).toBe(401);
@@ -111,14 +112,14 @@ describe('private boundary', () => {
         await instance.app.inject({
           method: 'GET',
           url: '/api/records/entities',
-          headers: { cookie: cookie() },
+          headers: boundHeaders(instance.store, cookie()),
         })
       ).statusCode,
     ).toBe(404);
     expect(source.read).not.toHaveBeenCalled();
   });
   it('exports only counts and times after explicit confirmation', async () => {
-    const headers = { origin, cookie: cookie() };
+    const headers = { origin, ...boundHeaders(instance.store, cookie()) };
     expect(
       (
         await instance.app.inject({

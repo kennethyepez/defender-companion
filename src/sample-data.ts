@@ -1,4 +1,4 @@
-import type { Dataset, RecordItem } from './domain';
+import { formatDate, type Dataset, type RecordItem } from './domain';
 
 // Entirely invented portfolio fixtures. Reserved documentation IPs; no tenant exports.
 export const sampleData: Dataset = {
@@ -147,7 +147,7 @@ export const records: Record<string, RecordItem[]> = {
       description:
         'Follow the process, establish its origin, and compare the activity with the approved change record.',
       facts: [
-        ['First activity', 'Jun 18, 14:33 UTC'],
+        ['First activity', formatDate('2026-06-18T14:33:00Z')],
         ['Affected devices', '1'],
         ['Assigned analyst', 'Unassigned'],
         ['Classification', 'Not determined'],
@@ -212,7 +212,7 @@ export const records: Record<string, RecordItem[]> = {
         ['Affected devices', '1'],
         ['Category', 'Application'],
         ['Action', 'Review update'],
-        ['Automatic remediation', 'Not enabled'],
+        ['Remediation in this app', 'Unavailable — read-only'],
       ],
     },
   ],
@@ -220,13 +220,13 @@ export const records: Record<string, RecordItem[]> = {
     {
       id: 'investigation-001',
       name: 'Credential access investigation',
-      subtitle: 'Atlas · Started Jun 18, 14:34 UTC',
+      subtitle: `Atlas · Started ${formatDate('2026-06-18T14:34:00Z')}`,
       status: 'Running',
       description:
         'Illustrative automated investigation context. No investigation is started from this app.',
       facts: [
         ['Source', 'Sample investigation'],
-        ['Related alert', 'alert-001'],
+        ['Related alert', 'Possible credential access'],
         ['Pending actions', '0'],
       ],
     },
@@ -235,7 +235,7 @@ export const records: Record<string, RecordItem[]> = {
     {
       id: 'action-001',
       name: 'Quarantine unwanted file',
-      subtitle: 'Harbor · Jun 17, 21:33 UTC',
+      subtitle: `Harbor · ${formatDate('2026-06-17T21:33:00Z')}`,
       status: 'Completed',
       description: 'A historical sample action. Reading this record does not repeat the operation.',
       facts: [
@@ -249,8 +249,8 @@ export const records: Record<string, RecordItem[]> = {
   indicators: [
     {
       id: 'indicator-001',
-      name: 'Example network indicator',
-      subtitle: '198.51.100.18 · Reserved documentation address',
+      name: '198.51.100.18',
+      subtitle: 'IP address · Reserved for documentation',
       status: 'Illustrative',
       description:
         'Reserved IP data demonstrates indicator context without publishing a real indicator or adding a block rule.',

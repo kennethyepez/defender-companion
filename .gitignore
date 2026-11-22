@@ -13,3 +13,9 @@ coverage/
 *.tsbuildinfo
 __pycache__/
 STATE.md
+# Host-specific administrative package; keep private infrastructure paths local.
+deploy/install-private-service.ps1
+android/.gradle/
+android/**/build/
+android/local.properties
+android/app/src/main/assets/web/

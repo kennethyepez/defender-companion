@@ -68,7 +68,11 @@ export async function buildApp(config: Config) {
     }
     if (!request.url.startsWith('/api/')) return;
     reply.header('Cache-Control', 'no-store');
-    const activeSession = store.session(request.cookies[names.session]);
+    const activeSession = store.session(
+      request.cookies[names.session],
+      Date.now(),
+      store.matchesBinding(request.cookies[names.session], request.headers['x-workspace-binding']),
+    );
     if (activeSession) {
       reply.header('X-Session-Expires-At', String(activeSession.expires));
       reply.header(
@@ -83,8 +87,15 @@ export async function buildApp(config: Config) {
         .send({ message: 'This request must come from the configured workspace origin.' });
     }
     if (!request.url.startsWith('/api/auth/')) {
-      const session = store.session(request.cookies[names.session]);
-      if (!session || session.recovery) {
+      const session = activeSession;
+      if (
+        !session ||
+        session.recovery ||
+        !store.matchesBinding(
+          request.cookies[names.session],
+          request.headers['x-workspace-binding'],
+        )
+      ) {
         store.audit('data-access', 'denied', '', request.ip);
         return reply
           .code(401)

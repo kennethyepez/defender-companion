@@ -1,3 +1,4 @@
+import { boundHeaders } from './helpers/binding';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { LightMyRequestResponse } from 'fastify';
 import { buildApp } from '../server/app';
@@ -10,6 +11,7 @@ let instance: Awaited<ReturnType<typeof buildApp>>;
 let owner: TestAuthenticator;
 let session: string;
 let counter: number;
+let binding: string;
 const cookies = (response: LightMyRequestResponse) =>
   response.cookies
     .filter((item) => item.value)
@@ -19,7 +21,7 @@ const post = (url: string, payload: object, cookie = session) =>
   instance.app.inject({
     method: 'POST',
     url: '/api/auth/' + url,
-    headers: { origin, cookie },
+    headers: { origin, ...boundHeaders(instance.store, cookie) },
     payload,
   });
 async function enroll(key: TestAuthenticator, cookie = '', approval?: string) {
@@ -67,9 +69,57 @@ beforeEach(async () => {
   const first = await enroll(owner);
   expect(first.statusCode).toBe(200);
   session = cookies(first);
+  binding = String(first.headers['x-workspace-binding']);
 });
 afterEach(async () => instance.app.close());
 describe('security-sensitive actions', () => {
+  it('denies a cookie copied by another port without the in-memory browser binding', async () => {
+    const token = session.match(/dc-session=([^;]+)/)![1];
+    const before = instance.store.session(token, Date.now(), false)!.lastSeen;
+    expect(binding).toMatch(/^[a-f0-9]{64}$/);
+    const status = await instance.app.inject({
+      url: '/api/auth/status',
+      headers: { cookie: session },
+    });
+    expect(status.json().authenticated).toBe(false);
+    expect(status.headers['x-workspace-binding']).toBeUndefined();
+    expect(
+      (await instance.app.inject({ url: '/api/workspace', headers: { cookie: session } }))
+        .statusCode,
+    ).toBe(401);
+    expect(
+      (await instance.app.inject({ url: '/api/auth/security', headers: { cookie: session } }))
+        .statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await instance.app.inject({
+          method: 'POST',
+          url: '/api/auth/step-up/options',
+          headers: { origin, cookie: session },
+          payload: { operation: 'sessions.revoke' },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(instance.store.session(token, Date.now(), false)!.lastSeen).toBe(before);
+    const other = instance.store.createSession(false, Date.now(), owner.id);
+    expect(
+      (
+        await instance.app.inject({
+          url: '/api/workspace',
+          headers: { cookie: session, 'x-workspace-binding': instance.store.browserBinding(other) },
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await instance.app.inject({
+          url: '/api/workspace',
+          headers: { cookie: session, 'x-workspace-binding': binding },
+        })
+      ).statusCode,
+    ).toBe(200);
+  });
   it('blocks the exact stolen-session enrollment regression', async () => {
     const result = await post('register/options', {});
     expect(result.statusCode).toBe(403);
@@ -180,7 +230,7 @@ describe('security-sensitive actions', () => {
         await instance.app.inject({
           method: 'GET',
           url: '/api/workspace',
-          headers: { cookie: session },
+          headers: boundHeaders(instance.store, session),
         })
       ).statusCode,
     ).toBe(401);
@@ -219,7 +269,7 @@ describe('security-sensitive actions', () => {
         await instance.app.inject({
           method: 'GET',
           url: '/api/auth/security',
-          headers: { cookie: recovered },
+          headers: boundHeaders(instance.store, recovered),
         })
       ).statusCode,
     ).toBe(403);

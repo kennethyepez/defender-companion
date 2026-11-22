@@ -22,6 +22,6 @@ SQLite retains at most 30 days/10,000 audit events, with HMAC-pseudonymized acto
 
 ## Residual risks
 
-A stolen session can read the reduced snapshot until expiry/revocation. A recovery code is a bearer secret. A local administrator can defeat host controls; localhost processes can spoof Serve headers, but still need passkey access. No malware-free guarantee, multi-user roles or penetration-test certification is claimed.
+A cookie alone cannot read data or manage access: a separate session-bound HMAC proof is held only in tab memory and sent in a custom same-origin header. It is returned only after genuine authentication/recovery, never by status/GET responses. This also mitigates cookies being shared between ports on the same Serve hostname; a different port is not cookie isolation. A page reload requires signing in again. Missing proofs do not refresh idle expiry. A stolen cookie together with this proof can still read the reduced snapshot until expiry/revocation. A recovery code is a bearer secret. A local administrator can defeat host controls; localhost processes can spoof Serve headers, but still need authenticated access. No malware-free guarantee, multi-user roles or penetration-test certification is claimed.
 
 Production fails closed until service identity and file isolation are proven. Owner physical enrollment and real ACL/tailnet acceptance are separate from automated protocol tests. Public delivery does not prove a deployed private service. See [deployment](docs/PRIVATE-DEPLOYMENT.md) and [verification](docs/TESTING.md).

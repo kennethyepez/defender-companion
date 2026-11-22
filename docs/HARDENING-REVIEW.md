@@ -8,6 +8,10 @@ Verification included genuine generated EC WebAuthn registrations/assertions, st
 
 The backend contains no Microsoft credential and performs no Microsoft calls. A private host's output hook can be verified separately from deployment. The public demo and its CI artifact remain fixture-only.
 
+A subsequent deployment review identified that different HTTPS ports on a Serve hostname share cookies. A separate HMAC proof now stays only in tab memory and is required alongside the cookie; it is issued after verified authentication/recovery and never through status/GET responses. Cookie-only requests cannot read data, change access or extend idle expiry. Tests cover another session's proof, expiry/logout and late authentication responses. The compiled Windows package was exercised with a disposable genuine EC registration under the patched Node 24 LTS runtime. Physical owner enrollment remains separate.
+
+The reviewed administrative installer checks the exact file inventory and hashes, rejects reparse paths, preserves existing routes, and limits the service identity to read-only app/handoff access plus its own writable data. Host-specific paths, plans and setup secrets are not published. Review of a package does not replace checks under the actual service token.
+
 ## Acceptance still required for each private deployment
 
 - Installation under the actual dedicated non-administrator service identity.

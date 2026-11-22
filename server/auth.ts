@@ -44,8 +44,9 @@ export async function registerAuth(app: FastifyInstance, store: Store, config: A
   const tokenFor = (request: FastifyRequest) => request.cookies[names.session];
   const requireFull = (request: FastifyRequest) => {
     const token = tokenFor(request);
-    const session = store.session(token);
-    if (!token || !session || session.recovery)
+    const bound = store.matchesBinding(token, request.headers['x-workspace-binding']);
+    const session = store.session(token, Date.now(), bound);
+    if (!token || !session || session.recovery || !bound)
       throw new AuthFailure('A full passkey session is required.');
     return { token, session };
   };
@@ -58,6 +59,7 @@ export async function registerAuth(app: FastifyInstance, store: Store, config: A
   };
   const setSession = (reply: FastifyReply, token: string, recovery = false) => {
     const session = store.session(token)!;
+    reply.header('X-Workspace-Binding', store.browserBinding(token));
     reply.header('X-Session-Expires-At', String(session.expires));
     reply.header(
       'X-Session-Idle-Expires-At',
@@ -107,11 +109,13 @@ export async function registerAuth(app: FastifyInstance, store: Store, config: A
     });
 
   app.get('/api/auth/status', async (request) => {
-    const session = store.session(tokenFor(request));
+    const token = tokenFor(request);
+    const bound = store.matchesBinding(token, request.headers['x-workspace-binding']);
+    const session = store.session(token, Date.now(), bound);
     return {
       enrolled: store.enrolled(),
-      authenticated: !!session,
-      recovery: session?.recovery ?? false,
+      authenticated: !!session && bound,
+      recovery: bound ? (session?.recovery ?? false) : false,
       absoluteExpiresAt: session?.expires,
       idleTimeoutMs: SESSION_IDLE_MS,
     };
@@ -137,8 +141,17 @@ export async function registerAuth(app: FastifyInstance, store: Store, config: A
       context = { authorization: 'bootstrap' };
     } else {
       const token = tokenFor(request);
-      const session = store.session(token);
-      if (!token || !session) throw new AuthFailure('Sign in to manage passkeys.');
+      const session = store.session(
+        token,
+        Date.now(),
+        store.matchesBinding(token, request.headers['x-workspace-binding']),
+      );
+      if (
+        !token ||
+        !session ||
+        !store.matchesBinding(token, request.headers['x-workspace-binding'])
+      )
+        throw new AuthFailure('Sign in to manage passkeys.');
       if (session.recovery) context = { authorization: 'recovery', sessionHash: digest(token) };
       else {
         const authorizingCredential = store.consumeApproval(
@@ -178,8 +191,9 @@ export async function registerAuth(app: FastifyInstance, store: Store, config: A
         if (store.enrolled()) throw new AuthFailure('Initial enrollment has already completed.');
         return;
       }
-      const session = store.session(token);
-      if (!token || !session || context.sessionHash !== digest(token))
+      const bound = store.matchesBinding(token, request.headers['x-workspace-binding']);
+      const session = store.session(token, Date.now(), bound);
+      if (!token || !session || !bound || context.sessionHash !== digest(token))
         throw new AuthFailure('Registration belongs to a different or expired session.');
       if (
         context.authorization === 'recovery'

@@ -1,3 +1,4 @@
+import { boundHeaders } from './helpers/binding';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { LightMyRequestResponse } from 'fastify';
 import { buildApp } from '../server/app';
@@ -25,14 +26,17 @@ async function register(authenticator: TestAuthenticator, session = '') {
   const options = await instance.app.inject({
     method: 'POST',
     url: '/api/auth/register/options',
-    headers: { origin, cookie: session },
+    headers: { origin, ...boundHeaders(instance.store, session) },
     payload: { token },
   });
   expect(options.statusCode).toBe(200);
   return instance.app.inject({
     method: 'POST',
     url: '/api/auth/register/verify',
-    headers: { origin, cookie: [session, cookies(options)].filter(Boolean).join('; ') },
+    headers: {
+      origin,
+      ...boundHeaders(instance.store, [session, cookies(options)].filter(Boolean).join('; ')),
+    },
     payload: {
       response: authenticator.registration(options.json().challenge, origin, 'localhost'),
     },
@@ -77,7 +81,7 @@ describe('real WebAuthn verification through HTTP routes', () => {
         await instance.app.inject({
           method: 'GET',
           url: '/api/workspace',
-          headers: { cookie: cookies(verified) },
+          headers: boundHeaders(instance.store, cookies(verified)),
         })
       ).statusCode,
     ).toBe(200);
@@ -92,7 +96,7 @@ describe('real WebAuthn verification through HTTP routes', () => {
         await instance.app.inject({
           method: 'GET',
           url: '/api/workspace',
-          headers: { cookie: cookies(verified) },
+          headers: boundHeaders(instance.store, cookies(verified)),
         })
       ).statusCode,
     ).toBe(401);
@@ -138,7 +142,7 @@ describe('real WebAuthn verification through HTTP routes', () => {
         await instance.app.inject({
           method: 'GET',
           url: '/api/workspace',
-          headers: { cookie: cookies(recovered) },
+          headers: boundHeaders(instance.store, cookies(recovered)),
         })
       ).statusCode,
     ).toBe(401);

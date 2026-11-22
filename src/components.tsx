@@ -1,4 +1,4 @@
-import { ArrowRight, ChevronRight, Info, Check, ArrowLeft } from 'lucide-react';
+import { ArrowRight, ChevronRight, Info, Check, ArrowLeft, LockKeyhole } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { titles, type Screen } from './navigation';
 
@@ -90,12 +90,12 @@ export function Steps({ items }: { items: [string, string][] }) {
     </ol>
   );
 }
-export function CheckList({ items }: { items: string[] }) {
+export function CheckList({ items, neutral = false }: { items: string[]; neutral?: boolean }) {
   return (
-    <ul className="check-list">
+    <ul className={`check-list${neutral ? ' neutral-list' : ''}`}>
       {items.map((item) => (
         <li key={item}>
-          <Check size={17} />
+          {neutral ? <LockKeyhole size={17} /> : <Check size={17} />}
           <span>{item}</span>
         </li>
       ))}
@@ -142,10 +142,12 @@ export function PageHeader({
   screen,
   back,
   subtitle,
+  title,
 }: {
   screen: Screen;
   back?: string;
   subtitle?: string;
+  title?: string;
 }) {
   return (
     <header className="page-header">
@@ -160,7 +162,7 @@ export function PageHeader({
       )}
       <div>
         <h1 id="page-title" tabIndex={-1}>
-          {titles[screen]}
+          {title ?? titles[screen]}
         </h1>
         {subtitle && <p>{subtitle}</p>}
       </div>

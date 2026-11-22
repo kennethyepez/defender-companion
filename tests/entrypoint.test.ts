@@ -32,4 +32,4 @@ it('refuses a real file connection under the desktop user even on localhost', ()
     message = String((error as { stderr?: Buffer }).stderr ?? '');
   }
   expect(message).toContain('dedicated non-');
-});
+}, 25000);

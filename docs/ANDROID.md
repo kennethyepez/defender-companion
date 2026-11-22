@@ -1,0 +1,66 @@
+# Android test app
+
+The signed Android app keeps the approved English interface and includes the 46-screen fictional workspace offline. The launcher uses the app’s shield/check icon, including adaptive and themed variants. Minimum Android 8 (API 26), target Android 16 (API 36).
+
+## Connect a private workspace
+
+1. Connect the phone to the same authorized private network as the workspace.
+2. On the authenticated workspace, open **More → Connection → Show connection QR**.
+3. In Android, choose **Scan connection QR**, then **Use camera** or **Choose QR image**. Alternatively, choose **Enter address instead**.
+4. Check the address and choose **Open workspace**. The app validates the service over normal system-trusted TLS, then asks before opening the browser. Sign in with your passkey there.
+
+The QR contains only the workspace origin: no Microsoft credentials, bootstrap token, session cookie, recovery code or passkey. Scanning never opens a URL or initiates a connection by itself. Only strict HTTPS `.ts.net` origins and allowed ports are accepted. Redirects, credentials, paths, query strings and fragments are rejected. Network failures remain errors; the offline demo is never presented as real tenant data.
+
+Private access uses the browser’s real WebAuthn/passkey flow in a Custom Tab. This release does not copy a browser session into the native app, implement an embedded sign-in WebView, or contain Microsoft API credentials. A working private server and owner enrollment are prerequisites for real data. Installing the APK does not install or activate that server.
+
+## Device access and data
+
+- Camera is the only runtime permission. Internet and network-state access support private connections and bundled SDK operation. Camera access is requested only after **Use camera**; declining it preserves image selection and manual entry.
+- Camera scanning uses the bundled ML Kit model. Frames and selected QR images are processed locally and are not saved by this app. ML Kit may collect operational SDK/device metrics under its own privacy terms; no claim of zero SDK telemetry is made.
+- The system document picker grants access only to the selected QR image or selected demo export destination. No storage, contact, microphone or notification permission is requested.
+- The native app saves the workspace address only. Authentication remains in the browser. The offline demo’s fictional notes and preferences stay in its separate local WebView storage.
+- The offline renderer loads packaged assets only. Network resources, mixed content, pop-ups, file/content access, cookies and runtime permissions are blocked. Its export bridge accepts only bounded fictional snapshots from the exact asset origin and main frame.
+- App backup is disabled. Human sign-in and recovery remain owner actions.
+
+## Interface update 1.0.1
+
+Connection starts with a QR action, a manual-address disclosure and a visible offline demo. The workspace leads with the actual priority alert and review action, followed by compact counts, device context and activity. Five equal navigation targets sit directly above Android navigation. Text follows system scaling rather than overriding accessibility preferences.
+
+The native container owns system, cutout and keyboard insets and consumes them once. The bundled document marks its Android host so CSS does not add another bottom safe area. Regular web browsers retain their own safe-area support. See [Android window insets](https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets) and [edge-to-edge views](https://developer.android.com/develop/ui/views/layout/edge-to-edge).
+
+## Build and sign
+
+Version 1.0.2 adds violet workspace bars, pull-down refresh and locally persisted System/Light/Dark appearance. The native connection and QR screens share that preference. Privacy & access sits near the bottom of onboarding with safe spacing, and remains reachable by scrolling when the manual form or keyboard reduces the available space. The top refresh icon is removed; More retains a keyboard-accessible Refresh data button.
+
+The appearance bridge accepts only the three fixed theme values from the existing trusted, main-frame asset origin. It does not grant network access, tenant permissions or authentication capabilities. Offline refresh reports the unchanged demo snapshot. Private-workspace authentication still opens in the browser and requires the owner's passkey.
+
+Use Node 24+, JDK 17, Android SDK 36, Gradle 9.6.1 and the committed wrapper. Android dependencies are pinned in the app build file; SDK paths belong in ignored `android/local.properties`.
+
+```text
+npm ci
+npm run build:android-web
+cd android
+gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+```
+
+Release signing reads `DEFENDER_ANDROID_KEYSTORE`, `DEFENDER_ANDROID_STORE_PASSWORD` and `DEFENDER_ANDROID_KEY_PASSWORD` from the environment, alias `defender-companion`. Supply your own protected update key. Never commit keys, passwords, private addresses, generated APKs, SDK files or local deployment material.
+
+```text
+gradlew :app:assembleRelease :app:lintRelease
+```
+
+Inspect the resulting APK with the Android SDK’s `apksigner verify --verbose --print-certs` and `aapt2 dump badging`. Actual device acceptance must cover launch, camera permission and cancellation, QR decoding and rejection, manual address errors, navigation/back behavior and document export. A successful build alone does not prove those flows or a live Defender connection.
+
+## Interface update 1.0.3
+
+All workspace cards share the approved translucent glass surface in light and dark appearance, with soft violet lighting, a fine highlighted edge and readable text. The native connection card follows the same material treatment. Browsers without backdrop blur retain solid readable cards; reduced-transparency, forced-color and print modes use an opaque surface. Existing theme choices, pull-to-refresh, navigation, QR connection and passkey access are preserved.
+
+The signed update uses the existing app identity and update certificate, so it can be installed over an earlier release without uninstalling it.
+
+## Primary implementation references
+
+- [Android local WebView content](https://developer.android.com/develop/ui/views/layout/webapps/load-local-content)
+- [Passkey architectures](https://developer.android.com/identity/passkeys/architecture)
+- [ML Kit bundled barcode scanning](https://developers.google.com/ml-kit/vision/barcode-scanning/android)
+- [CameraX](https://developer.android.com/jetpack/androidx/releases/camera)
+- [AndroidX Activity](https://developer.android.com/jetpack/androidx/releases/activity)
