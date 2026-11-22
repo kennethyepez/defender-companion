@@ -30,6 +30,10 @@ The native container owns system, cutout and keyboard insets and consumes them o
 
 ## Build and sign
 
+Version 1.0.2 adds violet workspace bars, pull-down refresh and locally persisted System/Light/Dark appearance. The native connection and QR screens share that preference. Privacy & access sits near the bottom of onboarding with safe spacing, and remains reachable by scrolling when the manual form or keyboard reduces the available space. The top refresh icon is removed; More retains a keyboard-accessible Refresh data button.
+
+The appearance bridge accepts only the three fixed theme values from the existing trusted, main-frame asset origin. It does not grant network access, tenant permissions or authentication capabilities. Offline refresh reports the unchanged demo snapshot. Private-workspace authentication still opens in the browser and requires the owner's passkey.
+
 Use Node 24+, JDK 17, Android SDK 36, Gradle 9.6.1 and the committed wrapper. Android dependencies are pinned in the app build file; SDK paths belong in ignored `android/local.properties`.
 
 ```text

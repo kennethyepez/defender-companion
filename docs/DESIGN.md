@@ -21,6 +21,16 @@ The mobile navigation uses five equal targets, an icon-sized selected pill and p
 
 Risk includes readable text; unknown origin stays “Not confirmed.” Unavailable response controls and private-service descriptions use neutral locks rather than green health checks. Notification options explicitly save preferences without implying a connected delivery service. Scan history preserves the selected device and shows an empty state when that snapshot has no record.
 
+## Appearance and refresh in 1.0.2
+
+Violet app bars anchor both light and dark workspaces. Dark mode uses a near-black canvas, distinct raised surfaces and a lighter violet action color. More → Appearance offers System, Light and Dark; the choice persists locally and also styles Android connection and QR screens. System follows changes to the operating system theme.
+
+Pulling down from the top of the page reveals Pull to refresh, then Release to refresh. Releasing beyond the threshold invokes the existing refresh operation once. Short, horizontal and cancelled gestures do not refresh; editing fields and open dialogs do not initiate the gesture. More retains Refresh data for keyboard and assistive-technology access. The demo explicitly reports that its snapshot is up to date rather than claiming a new tenant read.
+
+Route arrival lasts 180 ms, with subtle button and navigation feedback. Reduced-motion preferences remove these transitions. Privacy & access uses spare height at the bottom of Android onboarding, retaining scrolling when larger text or the manual form needs more room.
+
+Public examples inspected for this refinement were [SmartGym dark onboarding](https://screensdesign.com/apps/smartgym-gym-home-workouts/?id=1119&av=3558) and [YNAB light/dark budget screens](https://screensdesign.com/apps/ynab/?ts=0&vt=1&id=344&av=4296) on ScreensDesign. They informed surface hierarchy, compact rows and colored navigation; the application retains its own identity and assets.
+
 ## Interaction contracts
 
 Links change location. Buttons perform explicit local operations. Alerts retain source status when a review note or reminder changes. API failures do not show a success state. Filtering preserves source records. Dialogs are native, labelled and keyboard-contained. Route transitions move focus to the destination heading. Motion is restrained and disabled for reduced-motion users.

@@ -1,12 +1,10 @@
 package com.kennethyepez.defendercompanion;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.View;
 import android.view.WindowInsets;
 import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
@@ -63,6 +61,8 @@ public final class DemoActivity extends ComponentActivity {
 
   @Override
   public void onCreate(Bundle state) {
+    // Keep WebView's prefers-color-scheme tied to Android; the web choice can override it.
+    setTheme(NativeAppearance.systemIsDark(this) ? R.style.AppThemeDark : R.style.AppTheme);
     super.onCreate(state);
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
       Toast.makeText(
@@ -74,18 +74,9 @@ public final class DemoActivity extends ComponentActivity {
       return;
     }
     if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
-    getWindow()
-        .getDecorView()
-        .setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-    if (Build.VERSION.SDK_INT >= 30) {
-      int lightBars =
-          android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-              | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-      getWindow().getInsetsController().setSystemBarsAppearance(lightBars, lightBars);
-    }
+    NativeAppearance.systemBars(this, true);
     FrameLayout frame = new FrameLayout(this);
-    frame.setBackgroundColor(Color.rgb(246, 246, 249));
+    frame.setBackgroundColor(0xFF6330BD);
     frame.setOnApplyWindowInsetsListener((v, insets) -> {
       if (Build.VERSION.SDK_INT >= 30) {
         android.graphics.Insets s =
@@ -100,7 +91,7 @@ public final class DemoActivity extends ComponentActivity {
     });
     web = new WebView(this);
     web.setId(R.id.demo_webview);
-    web.setBackgroundColor(Color.rgb(246, 246, 249));
+    web.setBackgroundColor(NativeAppearance.color(this, 0xFFF6F6F9, 0xFF121018));
     WebView.setWebContentsDebuggingEnabled(false);
     WebSettings settings = web.getSettings();
     settings.setJavaScriptEnabled(true);
@@ -185,6 +176,10 @@ public final class DemoActivity extends ComponentActivity {
             if (value == null || value.length() > 262144) return;
             try {
               JSONObject action = new JSONObject(value);
+              if ("appearance".equals(action.optString("action"))) {
+                NativeAppearance.save(this, action.optString("value"));
+                return;
+              }
               if (!"exportDemo".equals(action.getString("action"))) return;
               String json = action.getString("json");
               JSONObject snapshot = new JSONObject(json);

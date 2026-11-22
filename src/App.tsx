@@ -21,10 +21,12 @@ import {
   LockKeyhole,
   Menu,
   Monitor,
+  Moon,
   RefreshCw,
   Search,
   Shield,
   ShieldCheck,
+  Sun,
   SquareTerminal,
   WifiOff,
   X,
@@ -58,6 +60,8 @@ import { Access } from './Access';
 import { SecurityControls } from './SecurityControls';
 import { Freshness } from './Freshness';
 import { ConnectionQr } from './ConnectionQr';
+import { PullToRefresh } from './PullToRefresh';
+import { useAppearance } from './appearance';
 import { ApiError, downloadJson, loadDataset, loadRecords, request } from './api';
 
 const mainNavigation = [
@@ -129,6 +133,7 @@ function readReviews() {
 }
 
 export function App() {
+  const { appearance, chooseAppearance } = useAppearance();
   const [route, setRoute] = useState(() => parseRoute(location.hash));
   const [dataset, setDataset] = useState<Dataset>(() =>
     new URLSearchParams(location.search).get('mode') === 'live'
@@ -172,7 +177,7 @@ export function App() {
   }
   async function refresh() {
     if (!live) {
-      tell('Sample data refreshed. No Microsoft services were contacted.');
+      tell('Demo snapshot is up to date.');
       return;
     }
     const generation = ++loadGeneration.current;
@@ -1221,6 +1226,28 @@ export function App() {
       case 'settings':
         return (
           <>
+            <Section title="Appearance">
+              <div className="card appearance-card">
+                <div className="appearance-options" role="group" aria-label="Color theme">
+                  {(
+                    [
+                      { value: 'system', label: 'System', icon: Monitor },
+                      { value: 'light', label: 'Light', icon: Sun },
+                      { value: 'dark', label: 'Dark', icon: Moon },
+                    ] as const
+                  ).map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      aria-pressed={appearance === value}
+                      onClick={() => chooseAppearance(value)}
+                    >
+                      <Icon size={18} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Section>
             <Section title="Workspaces">
               <div className="card list-card">
                 {workspaceLinks.map((id) => (
@@ -1229,6 +1256,14 @@ export function App() {
               </div>
             </Section>
             <Section title="Settings">
+              <button
+                className="button secondary refresh-data"
+                disabled={loadState === 'loading'}
+                onClick={() => void refresh()}
+              >
+                <RefreshCw size={18} className={loadState === 'loading' ? 'spin' : ''} />
+                {loadState === 'loading' ? 'Refreshing…' : 'Refresh data'}
+              </button>
               <div className="card list-card">
                 <Row
                   title="Connection"
@@ -1385,6 +1420,7 @@ export function App() {
                             onClick={() => {
                               localStorage.removeItem('dc.preferences');
                               localStorage.removeItem('dc.reviews');
+                              chooseAppearance('system');
                               setReviews({});
                               setPreferences(preferenceDefaults);
                               setReviewNote('');
@@ -1603,14 +1639,6 @@ export function App() {
           </div>
           <div className="top-actions">
             <span className="sample-label">{live ? 'Read-only' : 'Sample data'}</span>
-            <button
-              className="icon-button"
-              aria-label="Refresh snapshot"
-              disabled={loadState === 'loading'}
-              onClick={() => void refresh()}
-            >
-              <RefreshCw size={19} />
-            </button>
             <a
               className="icon-button notification-button"
               href="#notifications"
@@ -1628,7 +1656,14 @@ export function App() {
             </button>
           </div>
         </header>
-        <main id="main-content" tabIndex={-1} className="main" data-screen={route.screen}>
+        <PullToRefresh onRefresh={refresh} disabled={loadState === 'loading' || menu || !!modal} />
+        <main
+          key={`${route.screen}/${route.id ?? ''}`}
+          id="main-content"
+          tabIndex={-1}
+          className="main"
+          data-screen={route.screen}
+        >
           <div className="page-meta">
             <span className="workspace-mode">
               <i aria-hidden="true" />

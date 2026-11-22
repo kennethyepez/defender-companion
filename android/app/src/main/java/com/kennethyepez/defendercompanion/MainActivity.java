@@ -36,10 +36,12 @@ import javax.net.ssl.HttpsURLConnection;
 import org.json.JSONObject;
 
 public final class MainActivity extends ComponentActivity {
-  private final int violet = Color.rgb(113, 57, 216),
+  private int violet = Color.rgb(113, 57, 216),
       ink = Color.rgb(37, 35, 44),
       muted = Color.rgb(104, 101, 114),
       canvas = Color.rgb(246, 246, 249);
+  private int surface = Color.WHITE, secondary = 0xFFEEE7FB;
+  private boolean appliedDark;
   private final ExecutorService worker = Executors.newSingleThreadExecutor();
   private EditText address;
   private TextView status;
@@ -95,14 +97,14 @@ public final class MainActivity extends ComponentActivity {
     b.setText(label);
     b.setAllCaps(false);
     b.setTextSize(15);
-    b.setTextColor(primary ? Color.WHITE : violet);
+    b.setTextColor(primary ? (appliedDark ? 0xFF251437 : Color.WHITE) : violet);
     b.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
     b.setMinHeight(dp(52));
     b.setPadding(dp(16), dp(12), dp(16), dp(12));
     b.setBackground(
         new RippleDrawable(
             ColorStateList.valueOf(primary ? 0x33FFFFFF : 0x227139D8),
-            shape(primary ? violet : 0xFFEEE7FB, 14),
+            shape(primary ? violet : secondary, 14),
             null));
     b.setStateListAnimator(null);
     return b;
@@ -110,19 +112,20 @@ public final class MainActivity extends ComponentActivity {
 
   @Override
   public void onCreate(Bundle state) {
+    appliedDark = NativeAppearance.isDark(this);
+    setTheme(appliedDark ? R.style.AppThemeDark : R.style.AppTheme);
     super.onCreate(state);
+    if (appliedDark) {
+      violet = 0xFFBD96FF;
+      ink = 0xFFF5F1FA;
+      muted = 0xFFBDB3CA;
+      canvas = 0xFF121018;
+      surface = 0xFF1E1B27;
+      secondary = 0xFF302240;
+    }
     preferences = getSharedPreferences("connection", MODE_PRIVATE);
     if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
-    getWindow()
-        .getDecorView()
-        .setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-    if (Build.VERSION.SDK_INT >= 30) {
-      int lightBars =
-          android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-              | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-      getWindow().getInsetsController().setSystemBarsAppearance(lightBars, lightBars);
-    }
+    NativeAppearance.systemBars(this, false);
     ScrollView scroll = new ScrollView(this);
     scroll.setFillViewport(true);
     scroll.setBackgroundColor(canvas);
@@ -148,7 +151,7 @@ public final class MainActivity extends ComponentActivity {
     icon.setImageResource(R.drawable.ic_shield);
     icon.setContentDescription(null);
     icon.setPadding(dp(8), dp(8), dp(8), dp(8));
-    icon.setBackground(shape(violet, 12));
+    icon.setBackground(shape(0xFF7139D8, 12));
     brand.addView(icon, new LinearLayout.LayoutParams(dp(40), dp(40)));
     TextView name = text("Defender Companion", 16, ink, true);
     LinearLayout.LayoutParams nameLayout = new LinearLayout.LayoutParams(-1, -2);
@@ -160,7 +163,7 @@ public final class MainActivity extends ComponentActivity {
     LinearLayout card = new LinearLayout(this);
     card.setOrientation(LinearLayout.VERTICAL);
     card.setPadding(dp(20), dp(20), dp(20), dp(16));
-    card.setBackground(shape(Color.WHITE, 18));
+    card.setBackground(shape(surface, 18));
     add(page, card, 24);
     add(card, text("Private workspace", 17, ink, true), 0);
     add(
@@ -174,7 +177,7 @@ public final class MainActivity extends ComponentActivity {
     Button qr = button("Scan connection QR", true);
     qr.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_qr, 0, 0, 0);
     qr.setCompoundDrawablePadding(dp(10));
-    qr.setCompoundDrawableTintList(ColorStateList.valueOf(Color.WHITE));
+    qr.setCompoundDrawableTintList(ColorStateList.valueOf(appliedDark ? 0xFF251437 : Color.WHITE));
     qr.setOnClickListener(v -> scan.launch(new Intent(this, ScanActivity.class)));
     add(card, qr, 16);
     Button manual = button("Enter address instead", false);
@@ -202,7 +205,7 @@ public final class MainActivity extends ComponentActivity {
     address.setSelectAllOnFocus(false);
     address.setPadding(dp(12), dp(14), dp(12), dp(14));
     GradientDrawable border = shape(canvas, 12);
-    border.setStroke(dp(1), 0xFFE5E3EB);
+    border.setStroke(dp(1), appliedDark ? 0xFF40374D : 0xFFE5E3EB);
     address.setBackground(border);
     address.setText(preferences.getString("origin", ""));
     add(manualPanel, address, 8);
@@ -228,6 +231,10 @@ public final class MainActivity extends ComponentActivity {
     TextView sample = text("Fictional data · No account needed", 13, muted, false);
     sample.setGravity(Gravity.CENTER);
     add(page, sample, 6);
+    // Use spare viewport height for a footer; collapse naturally when the form needs scrolling.
+    View footerSpace = new View(this);
+    footerSpace.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+    page.addView(footerSpace, new LinearLayout.LayoutParams(-1, 0, 1f));
     Button privacy = button("Privacy & access", false);
     privacy.setBackgroundColor(Color.TRANSPARENT);
     privacy.setOnClickListener(v ->
@@ -346,6 +353,12 @@ public final class MainActivity extends ComponentActivity {
       status.setText(
           "A browser is needed for private passkey access. Install or enable one, then try again.");
     }
+  }
+
+  @Override
+  public void onResume() {
+    super.onResume();
+    if (appliedDark != NativeAppearance.isDark(this)) recreate();
   }
 
   @Override

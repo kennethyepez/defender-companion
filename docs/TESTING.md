@@ -46,6 +46,14 @@ The signed APK was installed and opened in an Android 16/API 36 emulator. Actual
 
 The release retains its update signing identity. Release assembly, release lint and Android parser tests passed. The web/server suite passed 128 tests, with one Windows-only symlink skip. An initial highly parallel run hit worker startup timeouts on the shared Windows host; the full single-worker run passed without relaxing production controls or security assertions.
 
+## Appearance and refresh acceptance, 1.0.2
+
+The web/server suite passed 133 tests with one Windows-only symlink skip. New interaction tests cover pull thresholds, cancellation, horizontal gestures, editing and scrolled content, request deduplication, disabled dialogs, retry, theme persistence and system-theme changes. Production web typechecking/build and Android release assembly/lint passed.
+
+All 46 routes were rendered in Dark at 393 px and checked for horizontal overflow in both themes at 360 px. Nine critical Light routes and both desktop themes were inspected separately. The browser verified saved theme selection, System responding to light/dark media changes, an actual 180 ms route animation and its absence under reduced motion.
+
+The signed release APK was exercised in an Android 16/API 36 emulator. Actual touch gestures showed Pull to refresh and Release to refresh, followed by the demo refresh status; a short gesture did not refresh. Native screenshots covered purple bars, Dark persistence back to onboarding, the QR screen, gesture/three-button navigation and the footer with 130% text. With the keyboard open, scrolling exposed the address, connection action and privacy footer. Android may retain its own contrast scrim behind three-button system navigation; the app menu remains violet. These results do not assert physical Samsung or private-tenant acceptance.
+
 ## Current limits
 
 Hardening regressions cover stolen-session enrollment, real signed step-up, action/target/session binding, replay, parallel bootstrap, key/session revocation, recovery and last-key protection. Store tests check expiry, counters and audit pseudonyms. Handoff/boundary tests cover redaction, clock/failure/age/size bounds, private hosts and approved identities. Client tests reject late responses after logout and verify local-only freshness/expiry. Python standard-library tests validate the output whitelist and atomic failure preservation; they make no network requests.

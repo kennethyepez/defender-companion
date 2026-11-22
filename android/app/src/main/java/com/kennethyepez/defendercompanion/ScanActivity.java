@@ -77,7 +77,7 @@ public final class ScanActivity extends ComponentActivity {
     TextView v = new TextView(this);
     v.setText(value);
     v.setTextSize(size);
-    v.setTextColor(0xFF25232C);
+    v.setTextColor(NativeAppearance.color(this, 0xFF25232C, 0xFFF5F1FA));
     v.setLineSpacing(dp(3), 1);
     if (strong) v.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
     return v;
@@ -91,11 +91,15 @@ public final class ScanActivity extends ComponentActivity {
     v.setTextColor(0xFF7139D8);
     v.setMinHeight(dp(52));
     boolean primary = label.equals("Use camera");
-    v.setTextColor(primary ? android.graphics.Color.WHITE : 0xFF7139D8);
+    v.setTextColor(
+        primary
+            ? android.graphics.Color.WHITE
+            : NativeAppearance.color(this, 0xFF7139D8, 0xFFBD96FF));
     v.setPadding(dp(16), dp(12), dp(16), dp(12));
     v.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
     GradientDrawable background = new GradientDrawable();
-    background.setColor(primary ? 0xFF7139D8 : 0xFFEEE7FB);
+    background.setColor(
+        primary ? 0xFF7139D8 : NativeAppearance.color(this, 0xFFEEE7FB, 0xFF302240));
     background.setCornerRadius(dp(14));
     v.setBackground(new RippleDrawable(ColorStateList.valueOf(0x227139D8), background, null));
     v.setStateListAnimator(null);
@@ -108,7 +112,9 @@ public final class ScanActivity extends ComponentActivity {
 
   @Override
   public void onCreate(Bundle saved) {
+    setTheme(NativeAppearance.isDark(this) ? R.style.AppThemeDark : R.style.AppTheme);
     super.onCreate(saved);
+    NativeAppearance.systemBars(this, false);
     try {
       scanner =
           BarcodeScanning.getClient(
@@ -127,7 +133,7 @@ public final class ScanActivity extends ComponentActivity {
     if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
     LinearLayout page = new LinearLayout(this);
     page.setOrientation(LinearLayout.VERTICAL);
-    page.setBackgroundColor(0xFFF6F6F9);
+    page.setBackgroundColor(NativeAppearance.color(this, 0xFFF6F6F9, 0xFF121018));
     page.setPadding(dp(24), dp(24), dp(24), dp(24));
     page.setOnApplyWindowInsetsListener((v, insets) -> {
       if (Build.VERSION.SDK_INT >= 30) {
@@ -148,7 +154,7 @@ public final class ScanActivity extends ComponentActivity {
     preview.setContentDescription("Connection QR camera preview");
     preview.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
     GradientDrawable background = new GradientDrawable();
-    background.setColor(0xFFEEE7FB);
+    background.setColor(NativeAppearance.color(this, 0xFFEEE7FB, 0xFF302240));
     background.setCornerRadius(dp(20));
     preview.setBackground(background);
     preview.setClipToOutline(true);

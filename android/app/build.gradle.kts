@@ -2,7 +2,7 @@ plugins { id("com.android.application") }
 android {
     namespace = "com.kennethyepez.defendercompanion"
     compileSdk = 36
-    defaultConfig { applicationId = "com.kennethyepez.defendercompanion"; minSdk = 26; targetSdk = 36; versionCode = 2; versionName = "1.0.1"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId = "com.kennethyepez.defendercompanion"; minSdk = 26; targetSdk = 36; versionCode = 3; versionName = "1.0.2"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     signingConfigs {
         create("privateRelease") {
