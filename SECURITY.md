@@ -1,34 +1,27 @@
 # Security model
 
-This release is a public portfolio demo with an optional single-administrator private server. It has not undergone an independent penetration test or certification. Please do not include live credentials, tenant records, personal data or exploit payloads in a public issue. Report a reproducible, sanitized defect through the repository's private vulnerability reporting channel if enabled; otherwise ask for a private reporting channel before disclosing sensitive details.
+Report vulnerabilities privately through GitHub Security, without tenant exports or exploit-bearing evidence in public issues.
 
-## Controls
+The public Pages app contains fictional fixtures only. The optional private server has no Defender mutation route, Microsoft credential, generic proxy or public tunnel. HTTPS production requires a dedicated unprivileged identity, read-only handoff, denied collector access, loopback bind and approved Tailscale Serve identity.
 
-| Threat                               | Control                                                                                                  | Residual limit                                              |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Tenant credential exposure           | Server-only environment values; no `VITE_` secrets; fixture-only static deployment                       | Operator must protect environment, process and backups      |
-| Unauthenticated security-data access | Passkey session gate before private data routes                                                          | Single administrator, not multi-tenant authorization        |
-| Login replay                         | Expiring, one-use challenges; origin/RP checks; user verification; credential counters                   | Requires a trustworthy browser and operating system         |
-| Session theft                        | Opaque hashed sessions, HttpOnly/SameSite cookies, Secure cookies on HTTPS, expiry and logout revocation | Local malware can compromise an authenticated endpoint      |
-| Cross-origin auth requests           | Exact Origin check for non-GET API requests; no permissive CORS                                          | Same-origin XSS remains a serious risk                      |
-| SSRF and token exfiltration          | Fixed upstream resources, fixed cloud hosts, same-path pagination, no redirects                          | Upstream responses remain untrusted                         |
-| Unbounded provider reads             | Timeouts, page/record bounds, response-size checks, short-lived cache                                    | A full tenant export is intentionally unsupported           |
-| Command/evidence injection           | React text rendering; no HTML injection or execution helpers                                             | Operators must not paste untrusted commands into a terminal |
-| Accidental remediation               | No upstream security writes, mutation routes or automatic closure                                        | Source portal actions are outside this app                  |
-| Brute-force auth                     | Per-route rate limits; random setup/recovery/session secrets                                             | Distributed attacks need infrastructure-level controls      |
+## Authentication
 
-## Private operation
+SimpleWebAuthn checks exact origin/RP, one-use two-minute challenges and user verification. Initial enrollment requires a private random setup token. Adding a passkey requires verification with an existing active key; a session cookie alone is insufficient. One-use approvals expire after 60 seconds and bind the session, exact operation and target. Authorization is rechecked after asynchronous signature verification, including counters and active credentials.
 
-Use a stable HTTPS origin outside localhost, preserve user verification, and run behind a properly configured TLS terminator. The server binds to loopback by default and does not trust forwarded headers. Restrict OS access to the database, its WAL files, `.env` and backups. Database files are not application-encrypted. Passkeys protect sign-in; they do not encrypt the database or JSON exports.
+Random sessions are stored hashed, with HttpOnly/SameSite Strict cookies and Secure `__Host-` cookies over HTTPS. Idle expiry is 15 minutes, absolute expiry two hours. Key revocation ends its sessions; the last active key is protected. All-session revocation and recovery-code rotation require fresh verification.
 
-Do not expose this server to untrusted users without adding appropriate authorization, operational monitoring, backup/restore testing and a security review. Do not grant Microsoft write permissions, turn off certificate checks, disable endpoint protection, or relax network isolation to make the app work. The application never requires those changes.
+Recovery codes are random 128-bit one-use secrets stored as hashes. A code invalidates sessions, permits only replacement enrollment for ten minutes, then successful replacement rotates codes and preserves existing keys. Passkeys authenticate; they do not encrypt the database at rest.
 
-Recovery codes can add a replacement passkey. Store them separately from the device and protect them like credentials. Existing passkeys are intentionally retained; compromised credentials require an operator-led revocation procedure and are not automatically removed by recovery.
+## Privacy and audit
 
-## Local records and exports
+Only the existing hourly collector holds Microsoft access. Its output hook has no network calls. The backend bounds and validates its fixed canonical input and redacts sensitive evidence again. Missing, failed or stale collection never falls back to fixtures. Freshness degrades locally without extra polling.
 
-Review notes and preferences live in browser storage, which is accessible to scripts on the same origin. Avoid sensitive notes on shared devices. A live JSON export may contain security evidence; store and transmit it under your organization's policy. Clearing app-local browser data does not delete source alerts or revoke private server sessions; sign out separately.
+Live notes remain in tab memory. Logout/expiry clears private state and late responses cannot restore it. Explicit private exports contain only counts and times. Legacy notes from older releases are preserved until deliberate cleanup through Local data.
 
-## Dependency maintenance
+SQLite retains at most 30 days/10,000 audit events, with HMAC-pseudonymized actors/sources and no tokens, codes, commands, paths or raw IPs. Protect the database and backups. Rate/body limits, exact Origin checks, CSP, no CORS and no-store API responses add browser defenses.
 
-Dependencies are locked; CI runs the test/build checks and an advisory audit. Dependabot proposes updates. A clean advisory report is a dated database result, not a guarantee that the application is free of vulnerabilities. Review dependency changes and rerun the tests before release.
+## Residual risks
+
+A stolen session can read the reduced snapshot until expiry/revocation. A recovery code is a bearer secret. A local administrator can defeat host controls; localhost processes can spoof Serve headers, but still need passkey access. No malware-free guarantee, multi-user roles or penetration-test certification is claimed.
+
+Production fails closed until service identity and file isolation are proven. Owner physical enrollment and real ACL/tailnet acceptance are separate from automated protocol tests. Public delivery does not prove a deployed private service. See [deployment](docs/PRIVATE-DEPLOYMENT.md) and [verification](docs/TESTING.md).

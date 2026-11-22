@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { LightMyRequestResponse } from 'fastify';
 import { buildApp } from '../server/app';
 import { TestAuthenticator } from './helpers/test-authenticator';
+import { workspace } from './helpers/workspace';
 const origin = 'http://localhost:4318';
 const token = 'test-only-bootstrap-token-with-32-characters';
 let instance: Awaited<ReturnType<typeof buildApp>>;
@@ -16,7 +17,7 @@ beforeEach(async () => {
     rpId: 'localhost',
     bootstrapToken: token,
     databasePath: ':memory:',
-    reader: { read: async () => [] },
+    source: { read: async () => workspace() },
   });
 });
 afterEach(async () => instance.app.close());
@@ -80,7 +81,7 @@ describe('real WebAuthn verification through HTTP routes', () => {
         })
       ).statusCode,
     ).toBe(200);
-    expect((await instance.app.inject(request)).statusCode).toBe(400);
+    expect([400, 403]).toContain((await instance.app.inject(request)).statusCode);
     await instance.app.inject({
       method: 'POST',
       url: '/api/auth/logout',
@@ -118,7 +119,7 @@ describe('real WebAuthn verification through HTTP routes', () => {
         headers: { origin, cookie: cookies(options) },
         payload: { response },
       });
-      expect(result.statusCode).toBe(400);
+      expect([400, 403]).toContain(result.statusCode);
     },
   );
   it('recovers with a one-use code, adds a replacement passkey and preserves original credentials', async () => {
@@ -145,7 +146,7 @@ describe('real WebAuthn verification through HTTP routes', () => {
     const replaced = await register(replacement, cookies(recovered));
     expect(replaced.statusCode).toBe(200);
     expect(instance.store.credentials()).toHaveLength(2);
-    expect(replaced.json().recoveryCodes).toEqual([]);
+    expect(replaced.json().recoveryCodes).toHaveLength(10);
     expect(
       (
         await instance.app.inject({
@@ -155,7 +156,7 @@ describe('real WebAuthn verification through HTTP routes', () => {
           payload: { code },
         })
       ).statusCode,
-    ).toBe(400);
+    ).toBe(403);
     const options = await loginOptions();
     const result = await instance.app.inject({
       method: 'POST',

@@ -38,4 +38,8 @@ The owner must register and use their own authenticator before a private product
 
 ## Current limits
 
+Hardening regressions cover stolen-session enrollment, real signed step-up, action/target/session binding, replay, parallel bootstrap, key/session revocation, recovery and last-key protection. Store tests check expiry, counters and audit pseudonyms. Handoff/boundary tests cover redaction, clock/failure/age/size bounds, private hosts and approved identities. Client tests reject late responses after logout and verify local-only freshness/expiry. Python standard-library tests validate the output whitelist and atomic failure preservation; they make no network requests.
+
+Windows service installation, actual service-token ACL checks, tailnet denial checks and the owner's physical authenticator remain deployment acceptance. Generated test keys do not substitute for these steps.
+
 The public release does not claim a production tenant integration test, multi-user authorization review, penetration test, full WCAG conformance or a guarantee of malware detection. Live-service acceptance requires an eligible tenant and explicit consent; no such credentials belong in this repository.

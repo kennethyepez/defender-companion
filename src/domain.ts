@@ -11,6 +11,22 @@ export const alertSchema = z.object({
   createdAt: z.string(),
   description: z.string(),
   category: z.string(),
+  sourceUrl: z
+    .string()
+    .max(700)
+    .url()
+    .refine((value) => {
+      const url = new URL(value);
+      return (
+        url.origin === 'https://security.microsoft.com' &&
+        !url.username &&
+        !url.password &&
+        /^\/alerts\/[A-Za-z0-9_.%\-]+$/.test(url.pathname) &&
+        !url.search &&
+        !url.hash
+      );
+    })
+    .optional(),
   evidence: z.array(
     z.object({
       id: z.string(),
@@ -51,6 +67,17 @@ export const datasetSchema = z.object({
   fetchedAt: z.string(),
   mode: z.enum(['sample', 'live']),
   warnings: z.array(z.string()),
+  freshness: z
+    .object({
+      state: z.enum(['fresh', 'stale', 'unavailable']),
+      lastSuccessfulReadAt: z.string().datetime({ offset: true }),
+      lastAttemptAt: z.string().datetime({ offset: true }),
+      maxAgeMs: z
+        .number()
+        .positive()
+        .max(75 * 60_000),
+    })
+    .optional(),
 });
 export type Dataset = z.infer<typeof datasetSchema>;
 export const severityRank: Record<Severity, number> = {

@@ -55,6 +55,8 @@ import {
   Steps,
 } from './components';
 import { Access } from './Access';
+import { SecurityControls } from './SecurityControls';
+import { Freshness } from './Freshness';
 import { ApiError, downloadJson, loadDataset, loadRecords, request } from './api';
 
 const mainNavigation = [
@@ -110,7 +112,11 @@ function readReviews() {
 
 export function App() {
   const [route, setRoute] = useState(() => parseRoute(location.hash));
-  const [dataset, setDataset] = useState<Dataset>(sampleData);
+  const [dataset, setDataset] = useState<Dataset>(() =>
+    new URLSearchParams(location.search).get('mode') === 'live'
+      ? { alerts: [], devices: [], mode: 'live', fetchedAt: '', warnings: [] }
+      : sampleData,
+  );
   const live = new URLSearchParams(location.search).get('mode') === 'live';
   const [loadState, setLoadState] = useState<'ready' | 'loading' | 'error' | 'auth'>(
     live ? 'loading' : 'ready',
@@ -123,7 +129,9 @@ export function App() {
   const [menu, setMenu] = useState(false);
   const [catalogQuery, setCatalogQuery] = useState('');
   const [preferences, setPreferences] = useState(readPreferences);
-  const [reviews, setReviews] = useState(readReviews);
+  const [reviews, setReviews] = useState(() =>
+    live ? ({} as Record<string, Review>) : readReviews(),
+  );
   const [reviewNote, setReviewNote] = useState('');
   const [outcome, setOutcome] = useState('Undetermined');
   const [noticeRead, setNoticeRead] = useState(false);
@@ -133,6 +141,7 @@ export function App() {
   const [resourceError, setResourceError] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const firstRoute = useRef(true);
+  const loadGeneration = useRef(0);
   const alert = dataset.alerts.find((a) => a.id === route.id) ?? dataset.alerts[0];
   const device =
     dataset.devices.find((d) => d.id === route.id) ??
@@ -148,17 +157,35 @@ export function App() {
       tell('Sample data refreshed. No Microsoft services were contacted.');
       return;
     }
+    const generation = ++loadGeneration.current;
     setLoadState('loading');
     try {
       const data = await loadDataset();
+      if (generation !== loadGeneration.current) return;
       setDataset(data);
       setLoadState('ready');
       setLoadError('');
     } catch (error) {
+      if (generation !== loadGeneration.current) return;
       setLoadState(error instanceof ApiError && error.status === 401 ? 'auth' : 'error');
       setLoadError(error instanceof Error ? error.message : 'The workspace could not be loaded.');
     }
   }
+  useEffect(() => {
+    if (!live) return;
+    const clear = () => {
+      loadGeneration.current += 1;
+      setDataset({ alerts: [], devices: [], mode: 'live', fetchedAt: '', warnings: [] });
+      setRemoteRecords({});
+      setReviews({});
+      setReviewNote('');
+      setNoticeRead(false);
+      setModal(null);
+      setLoadState('auth');
+    };
+    addEventListener('dc-session-ended', clear);
+    return () => removeEventListener('dc-session-ended', clear);
+  }, [live]);
   useEffect(() => {
     if (live) {
       setDataset({ alerts: [], devices: [], mode: 'live', fetchedAt: '', warnings: [] });
@@ -297,13 +324,17 @@ export function App() {
       ...reviews,
       [alert.id]: { note: reviewNote.trim(), outcome, reviewedAt: new Date().toISOString() },
     };
-    if (!saveLocal('dc.reviews', next)) {
+    if (!live && !saveLocal('dc.reviews', next)) {
       tell('Your browser could not save the note. Copy it before leaving.');
       return;
     }
     setReviews(next);
     setModal(null);
-    tell('Review saved on this browser. The Defender alert is unchanged.');
+    tell(
+      live
+        ? 'Review held only in this tab until sign-out or reload. Defender is unchanged.'
+        : 'Review saved on this browser. The Defender alert is unchanged.',
+    );
   }
   function updatePreference(key: keyof Preferences, checked: boolean) {
     const next = { ...preferences, [key]: checked };
@@ -443,8 +474,12 @@ export function App() {
             <div className="overview-grid">
               <div className={`card priority-card ${counts.open ? 'attention' : ''}`}>
                 <div className="card-top">
-                  <Badge tone={counts.open ? 'high' : 'success'}>
-                    {counts.open ? 'Needs your review' : 'Up to date'}
+                  <Badge tone={counts.open ? 'high' : live ? '' : 'success'}>
+                    {counts.open
+                      ? 'Needs your review'
+                      : live
+                        ? 'No open alerts in snapshot'
+                        : 'Up to date'}
                   </Badge>
                   <ShieldCheck size={23} />
                 </div>
@@ -581,6 +616,11 @@ export function App() {
               <Badge>{alert.status === 'resolved' ? 'Resolved in source' : 'Needs review'}</Badge>
             </div>
             <h2 className="detail-title">{alert.title}</h2>
+            {live && alert.sourceUrl && (
+              <a className="text-link" href={alert.sourceUrl} target="_blank" rel="noreferrer">
+                Open source alert in Defender <ExternalLink size={15} />
+              </a>
+            )}
             <p className="meta">
               <Monitor size={16} />
               {dataset.devices.find((d) => d.id === alert.deviceId)?.name ?? alert.deviceId} ·{' '}
@@ -875,8 +915,10 @@ export function App() {
         return alert ? (
           <>
             <Notice>
-              Review notes stay in this browser. They do not close, classify or suppress alerts in
-              Defender. Avoid storing sensitive evidence on shared devices.
+              {live
+                ? 'Private notes stay only in this tab’s memory and disappear on sign-out, expiry or reload. They are never included in exports.'
+                : 'Demo notes stay in this browser.'}{' '}
+              They do not close, classify or suppress alerts in Defender.
             </Notice>
             <form
               onSubmit={(e) => {
@@ -886,8 +928,10 @@ export function App() {
                   body: (
                     <>
                       <p>
-                        Your finding will be saved only on this browser. The source alert stays
-                        unchanged.
+                        {live
+                          ? 'Your finding stays only in this tab until sign-out or reload.'
+                          : 'Your finding will be saved only on this browser.'}{' '}
+                        The source alert stays unchanged.
                       </p>
                       <button className="button" onClick={saveReview}>
                         Save local review
@@ -969,8 +1013,9 @@ export function App() {
               <FileText size={26} />
               <h2>Workspace snapshot</h2>
               <p>
-                Export the records currently loaded, plus local review notes. Treat a live export as
-                sensitive security data.
+                {live
+                  ? 'Export counts and collection times only, with confirmation. Evidence, device names, alert identifiers and notes are excluded.'
+                  : 'Export the fictional records currently loaded, plus your demo review notes.'}
               </p>
               <Facts
                 items={[
@@ -982,6 +1027,35 @@ export function App() {
               <button
                 className="button"
                 onClick={() => {
+                  if (live) {
+                    setModal({
+                      title: 'Export a minimal summary?',
+                      body: (
+                        <>
+                          <p>
+                            This downloads alert counts, device counts and source freshness. It
+                            excludes identifiers, names, evidence and notes. A security event will
+                            be recorded.
+                          </p>
+                          <button
+                            className="button"
+                            onClick={() => {
+                              void request('workspace/export', { confirm: true })
+                                .then((value) => {
+                                  downloadJson('security-summary.json', value);
+                                  setModal(null);
+                                  tell('Minimal summary exported.');
+                                })
+                                .catch((error: Error) => tell(error.message));
+                            }}
+                          >
+                            Export summary
+                          </button>
+                        </>
+                      ),
+                    });
+                    return;
+                  }
                   downloadJson('defender-companion-snapshot.json', {
                     ...dataset,
                     localReviews: reviews,
@@ -1146,13 +1220,13 @@ export function App() {
               <h2>{live ? 'A server-side connection' : 'A safe public demonstration'}</h2>
               <p>
                 {live
-                  ? 'Passkey-authenticated requests reach fixed Microsoft API endpoints. Tenant credentials stay on the server.'
+                  ? 'Passkeys protect the last snapshot from your existing hourly collector. This workspace has no Microsoft credentials and makes no Microsoft API calls.'
                   : 'Explore every screen with fictional records. No tenant credentials or private endpoint data are included.'}
               </p>
               <Facts
                 items={[
-                  ['Alert provider', 'Microsoft Graph Security'],
-                  ['Device provider', 'Defender for Endpoint'],
+                  ['Alert provider', live ? 'Existing hourly collector' : 'Fictional fixtures'],
+                  ['Device context', live ? 'Alert-associated devices only' : 'Fictional fixtures'],
                   ['Response operations', 'Not implemented'],
                   ['Credentials in browser', 'None'],
                 ]}
@@ -1180,21 +1254,17 @@ export function App() {
         return (
           <>
             <Notice>
-              Grant only the reading permissions required by the views you use. Availability depends
-              on license, onboarding and admin consent.
+              The private workspace reads a limited local snapshot. Only the existing collector
+              holds Microsoft access; this app receives no tenant credentials.
             </Notice>
             <div className="card">
               <Facts
                 items={[
-                  ['Alerts', 'SecurityAlert.Read.All — Graph'],
-                  ['Incidents', 'SecurityIncident.Read.All — Graph'],
-                  ['Devices', 'Machine.Read.All — MDE'],
-                  ['Software', 'Software.Read.All — MDE'],
-                  ['Vulnerabilities', 'Vulnerability.Read.All — MDE'],
-                  ['Recommendations', 'SecurityRecommendation.Read.All — MDE'],
-                  ['Investigations', 'Not connected — broader permission required'],
-                  ['Action history', 'Not connected — broader permission required'],
-                  ['Indicators', 'Not connected — broader permission required'],
+                  ['Collector grant', 'SecurityAlert.Read.All — Graph'],
+                  ['Workspace grant', 'None'],
+                  ['Device context', 'Included alert evidence only'],
+                  ['Other live views', 'Not connected'],
+                  ['Full evidence', 'Open the original alert in Defender'],
                 ]}
               />
             </div>
@@ -1206,13 +1276,20 @@ export function App() {
       case 'security':
         return (
           <>
+            {live &&
+              (loadState === 'auth' ? (
+                <ButtonLink href="access">Sign in to manage access</ButtonLink>
+              ) : (
+                <SecurityControls />
+              ))}
             <div className="card">
               <CheckList
                 items={[
                   'Passkeys with verified origin, RP ID and user verification',
                   'Single-use challenges and one-time recovery codes',
                   'HttpOnly, SameSite session cookies in the private server',
-                  'Fixed upstream API paths and bounded pagination',
+                  'Credential-free, bounded snapshot reads with explicit age and failure states',
+                  'Fresh passkey verification for access changes; idle and absolute session expiry',
                   'No endpoint or alert mutation routes',
                 ]}
               />
@@ -1220,8 +1297,9 @@ export function App() {
             <Section title="Local browser data">
               <div className="card">
                 <p>
-                  Review notes and delivery preferences stay on this browser. Export anything you
-                  need before clearing them.
+                  {live
+                    ? 'New private notes stay in tab memory only. Notes saved by an older version may still exist on this browser; preserve anything you need before explicitly clearing them below.'
+                    : 'Demo review notes and delivery preferences stay on this browser. Export anything you need before clearing them.'}
                 </p>
                 <button
                   className="button secondary"
@@ -1495,6 +1573,7 @@ export function App() {
               route.screen === 'home' ? 'A clearer view of what needs your attention.' : undefined
             }
           />
+          {live && <Freshness data={dataset} visible={loadState === 'ready'} />}
           {live &&
             route.screen !== 'connections' &&
             dataset.warnings.map((warning) => (
