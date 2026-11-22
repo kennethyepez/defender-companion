@@ -21,27 +21,29 @@ Open the local URL printed by Vite. For a production build, run `npm run build`,
 
 ## What you can review
 
-- **46 addressable screens** across alerts, evidence, devices, software, exposure, investigation context, notifications, settings and failure states.
-- **A complete investigation path:** overview → alert → evidence → process/file/registry context → a local review note.
-- **Search and filters** with no-results recovery, selected device context, and source status preserved across review actions.
-- **Local review notes, notification preferences and JSON exports.** Acknowledging a reminder never resolves the source alert.
-- **Responsive layouts:** a sidebar workspace on desktop and five destinations in the mobile navigation.
-- **An optional private server:** actual WebAuthn registration/authentication, one-time recovery codes, expiring server sessions, and allowlisted Microsoft read adapters.
+- 46 English screens with responsive layouts, search, filters and an evidence-to-review flow.
+- A fixture-only public demo with local review notes and exports. It makes no Microsoft requests.
+- An optional private, alert-only workspace using the output of an existing hourly collector. The backend has no Microsoft credential and no additional collector or notification transport.
+- Real FIDO2/WebAuthn access with one-use challenges, user verification, action-bound step-up, revocation, scoped recovery and bounded redacted security history.
+- Explicit collection age and failures. Full command lines, paths and account evidence stay in Defender.
 
-<img src="docs/screenshots/overview-mobile.jpg" alt="Mobile overview with a priority alert and the next investigation step" width="320" />
+<img src="docs/screenshots/overview-mobile.jpg" alt="Fictional mobile overview" width="320" />
 
 ## Two explicit data modes
 
-|                  | Public demo                                      | Optional private workspace                        |
-| ---------------- | ------------------------------------------------ | ------------------------------------------------- |
-| Data             | Invented fixtures and reserved example addresses | Server-side Microsoft API reads                   |
-| Human access     | No account needed for fictional data             | Passkeys, user verification and one-time recovery |
-| Credentials      | None                                             | Environment variables on the server only          |
-| Reviews          | Local to the browser                             | Local to the browser; not written to Defender     |
-| Endpoint changes | None                                             | None                                              |
-| Notifications    | Local inbox and saved preferences                | Same; external push/voice is not connected        |
+|                                  | Public demo                        | Optional private workspace                            |
+| -------------------------------- | ---------------------------------- | ----------------------------------------------------- |
+| Data                             | Fictional fixtures                 | Minimized snapshot from the existing collector        |
+| Access                           | No account                         | Approved tailnet identity plus passkey                |
+| Microsoft credentials in backend | None                               | None                                                  |
+| Reviews                          | Browser local storage              | Tab memory; cleared at sign-out or reload             |
+| Export                           | Fictional snapshot and local notes | Explicitly confirmed counts and collection times only |
+| Collection                       | None                               | Existing hourly collector; no new polling             |
+| Changes to Defender              | None                               | None                                                  |
 
-The private adapters cover alerts, incidents, machines, software, vulnerabilities and recommendations. Investigations, past machine actions and indicators remain **demo-only** because their documented Microsoft read operations require broader write-capable grants. This project deliberately does not request those grants. Entities and scan progress also have no live provider in this release. See [API coverage](docs/API-COVERAGE.md) for permissions and official sources.
+Private access requires a dedicated unprivileged service identity, read-only access to the handoff, denial of collector configuration access, a stable Tailscale HTTPS origin and owner passkey enrollment. The server fails closed if these production prerequisites are absent. This release does not imply they have been provisioned on every host. The public Pages deployment contains only the static demo.
+
+Other views remain fixture-only. [API coverage](docs/API-COVERAGE.md) distinguishes the active collector from the standalone reference adapter, which is not imported by the private server.
 
 ## Engineering review
 

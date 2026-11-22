@@ -7,6 +7,7 @@ import type {
 import { KeyRound, ShieldCheck } from 'lucide-react';
 import { request } from './api';
 import { Notice, CheckList, ButtonLink } from './components';
+import { approveAction } from './security-api';
 
 export function Access({
   live,
@@ -17,12 +18,26 @@ export function Access({
   onLogin: () => void;
   recovery?: boolean;
 }) {
-  const [status, setStatus] = useState<{ enrolled: boolean; authenticated: boolean }>();
+  const [status, setStatus] = useState<{
+    enrolled: boolean;
+    authenticated: boolean;
+    recovery?: boolean;
+  }>();
   const [token, setToken] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [codes, setCodes] = useState<string[]>([]);
+  useEffect(() => {
+    const clear = () => {
+      setCodes([]);
+      setCode('');
+      setToken('');
+      setStatus((old) => (old ? { ...old, authenticated: false, recovery: false } : old));
+    };
+    addEventListener('dc-session-ended', clear);
+    return () => removeEventListener('dc-session-ended', clear);
+  }, []);
   useEffect(() => {
     if (live)
       request<{ enrolled: boolean; authenticated: boolean }>('auth/status')
@@ -36,12 +51,16 @@ export function Access({
       if (action === 'recover') {
         await request('auth/recover', { code });
         setCode('');
-        setStatus({ enrolled: true, authenticated: true });
-        onLogin();
+        setStatus({ enrolled: true, authenticated: true, recovery: true });
+        location.hash = 'access';
       } else if (action === 'register') {
+        const approval =
+          status?.enrolled && !status.recovery
+            ? await approveAction('credential.add', 'Passkey')
+            : undefined;
         const options = await request<PublicKeyCredentialCreationOptionsJSON>(
           'auth/register/options',
-          { token },
+          { token, approval, label: 'Passkey' },
         );
         const response = await startRegistration({ optionsJSON: options });
         const result = await request<{ recoveryCodes: string[] }>('auth/register/verify', {
@@ -144,7 +163,10 @@ export function Access({
               {status?.authenticated ? (
                 <>
                   <Notice>
-                    <ShieldCheck size={16} /> You have an active private session.
+                    <ShieldCheck size={16} />
+                    {status.recovery
+                      ? 'Recovery is limited to adding a replacement passkey. No workspace data is accessible yet.'
+                      : 'Adding a passkey requires verification with an existing one first.'}
                   </Notice>
                   <button
                     className="button"

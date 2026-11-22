@@ -11,4 +11,5 @@ coverage/
 .local/
 .local*
 *.tsbuildinfo
+__pycache__/
 STATE.md

@@ -1,56 +1,36 @@
-# Optional private workspace
+# Private deployment
 
-## Local setup
+## Boundary and flow
 
-```sh
-npm ci
-npm run build
-```
+Approved human + passkey → tailnet-only Tailscale Serve HTTPS → loopback backend → minimized read-only handoff.
 
-Copy `.env.example` to `.env` and generate a setup token locally:
+The existing collector keeps its certificate, sole `SecurityAlert.Read.All` grant and hourly schedule. `tools/companion_handoff.py` is an output hook, not a collector: no authentication, network or subprocess calls. Call `export_success(snapshot, actual_read_time, fixed_file)` after a successful existing read and `export_failure(actual_attempt_time, fixed_file)` on failure. Isolate hook failures from the collector status, event queue and notifications. The hook writes atomically. No additional monitor, task, API call or permission is required.
 
-```sh
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+The backend has no Microsoft credential. Only counts, severity/status/category, associated device labels and generic observations cross this boundary. Full evidence remains at the fixed HTTPS Defender source link.
 
-Place the result in `BOOTSTRAP_TOKEN` in the local `.env`; never commit or send it in a chat. Keep `APP_ORIGIN=http://localhost:4318` and `RP_ID=localhost` for this local setup. Optional Microsoft values belong only in that server file. Use a dedicated application with the documented reading grants. The passkey flow itself can be exercised without Microsoft credentials, but tenant views remain unavailable until those credentials are configured.
+## Development
 
-```sh
-npm start
-```
+Use Node.js 24+ and Python 3 for the tests. Run `npm ci`, `npm run check`, copy `.env.example` to a private `.env`, and create a random 32-byte bootstrap token locally. Keep `APP_ORIGIN=http://localhost:4318`, `RP_ID=localhost`, then `npm start`. Open `http://localhost:4318/?mode=live#access`. Never send the token or codes in chat. Without a handoff, access can be tested, but private views report unavailable; no fixtures are substituted. Configuring any real handoff also requires the service isolation checks, even with a localhost origin.
 
-Open `http://localhost:4318/?mode=live#access`, enter the private setup token locally and register your authenticator. Save the one-time recovery codes privately. Sign out and verify sign-in with the same passkey before relying on the deployment. The root URL without `?mode=live` remains the fictional-data demo. For separate frontend/server development, run `npm run dev:server` and `npm run dev`; the Vite proxy serves local requests, but WebAuthn requires the configured frontend origin/RP to match the address actually used.
+## Production prerequisites
 
-## Hosting boundaries
+1. Keep one stable HTTPS `.ts.net` origin and identical RP ID. The backend binds only `127.0.0.1`; other binds are rejected.
+2. Run under a dedicated non-administrator Windows virtual service account (exact service SID in `SERVICE_ACCOUNT_ID`) or dedicated non-root Linux UID. A compatible service host is an external deployment prerequisite. This repository does not install a service wrapper or second collector. Windows service installation and Serve configuration require an administrative token.
+3. Give the service read/execute on an administrator-protected deployed app/runtime, modify only on its private database directory, and read-only on the **handoff subdirectory**. Preserve collector owner/SYSTEM/admin ACLs. Never grant the service the collector directory, certificate or connection file. Keep bootstrap configuration private. Do not serve code from a shared writable checkout.
+4. Set fixed canonical `HANDOFF_FILE` and `PROTECTED_COLLECTOR_FILE` paths. The protected file must exist and be readable by the collector, but inaccessible to the backend. Startup checks actual identity, denies administrator membership, requires handoff read but not write, and verifies denial of collector configuration reads. Handoff junction/symlink paths and oversized/invalid content are refused. Run `deploy/check-private-access.ps1` under the intended service identity for a read-only preflight.
+5. Configure exact `ALLOWED_TAILNET_LOGINS`. Use Tailscale **Serve**, never Funnel, forwarding the selected HTTPS origin to loopback. Preserve existing Serve routes; do not reset them or create public ingress. Restrict the tailnet grant to intended users/devices. The app additionally checks approved human identity, exact Host and direct loopback peer on every request. Tagged nodes with no identity and unapproved shared users are denied. See [official Serve documentation](https://tailscale.com/docs/features/tailscale-serve).
+6. Start only this workspace service. Verify unapproved users and direct network requests are denied. At its private origin, the owner enters the setup token, registers a passkey, saves recovery codes and tests sign-out/sign-in. Test another key with step-up, invalid/replayed verification and recovery without loss of access before relying on it. PIN, biometrics and physical touch belong to the owner.
 
-The public demo is complete without a Microsoft connection. This guide describes the optional single-administrator server; it does not authorize registering an Entra application or granting tenant access on anyone's behalf.
+These steps change no Defender setting, inspection, endpoint isolation, quarantine or Microsoft grant. They do not authorize quarantined devices to contact LAN hosts. There is no public fallback.
 
-## Data flow and storage
+## Acceptance and rollback
 
-Your browser signs in to your own server with a passkey. The server reads selected Microsoft security APIs using a dedicated service identity. Tenant ID, client ID and client secret stay in the server environment, never in a frontend build or GitHub Pages. SQLite stores passkey public keys, credential counters and hashed session/recovery state. Review notes stay in the browser. No private server is included in the public Pages deployment.
+Automated protocol tests and public builds do not prove production deployment. Acceptance also needs actual service-token ACL checks, private tailnet/user denial checks, source freshness and owner passkey use. Until then production remains pending, with the entrypoint failing closed.
 
-## Local setup
+Back up SQLite consistently with a SQLite-aware backup or a clean stop of only this service. Preserve the WAL. Migration retains public keys and recovery hashes while expiring legacy unbound sessions. Roll back only this workspace code/config/database and its own Serve route. Preserve collector schedule, queue and endpoint protections.
 
-1. Install Node.js 24 LTS or newer, then run `npm ci` and `npm run build`.
-2. Copy `.env.example` to `.env`. Generate a random bootstrap token with the command shown there and store it privately. Keep the default loopback bind.
-3. Start with `npm start`. Open **http://localhost:4318/?mode=live#access**, using `localhost` consistently; an IP address is a different WebAuthn origin.
-4. Enter the setup token in the local form and register your passkey using your own authenticator. Save the ten one-time recovery codes separately. Existing credentials are not removed.
-5. Sign out, sign in with the passkey, and check that an invalid credential or origin is rejected. The application cannot do your biometric/PIN/touch interaction for you.
+## Recovery and remaining risk
 
-Without Microsoft credentials, passkey access still works, but the workspace clearly reports that the data source is not configured. Never substitute sample data for this failure.
+A one-use recovery code invalidates existing sessions, allows replacement enrollment for ten minutes and cannot read source data. Successful replacement preserves keys and rotates codes. Access revocation and code renewal require action-bound step-up; the last active key cannot be removed.
 
-## Optional Microsoft connection
-
-Create or reuse a dedicated application with only the required **application reading permissions** listed in [API-COVERAGE.md](API-COVERAGE.md). Obtain tenant-admin consent through the normal organizational process. Put the identifiers and secret in the server's `.env` or an appropriately protected secret store. Do not prefix credentials with `VITE_` and do not enter them into the public demo. Restart only your private server after changing its environment.
-
-The adapter supports the global Microsoft cloud. The application does not request or perform remediation. It intentionally excludes live operations whose documented grants are write-capable. Start with the smallest useful scope and confirm availability for your license.
-
-## A stable HTTPS deployment
-
-Before exposing a server, choose your own stable hostname, configure valid TLS at the reverse proxy and set `APP_ORIGIN=https://your-hostname` and `RP_ID=your-hostname`. They must match exactly. Forward requests to the loopback application. There is no wildcard-origin configuration and no automatic public tunnel. Do not change the origin after enrolling credentials unless you have a tested migration and recovery plan.
-
-This repository does not create a public server, buy infrastructure, change DNS or open firewall ports. Deployments must preserve the host's security policy. A multi-user or multi-tenant rollout needs a separate authorization design.
-
-## Backup and recovery
-
-Stop only this private server cleanly before copying its SQLite database and associated state, or use a SQLite-aware online backup process. Protect backups as authentication data; test restoration with the same RP ID/origin. Never commit database files or recovery codes. An existing valid passkey can add another passkey. A one-time recovery code creates a ten-minute session that can register a replacement; it cannot read tenant security data before passkey registration. Recovery preserves existing credentials and source data.
+A compromised local administrator/kernel can tamper with the service, handoff or trusted headers. Passkeys and service separation do not disinfect a compromised host. Full source links and device labels remain sensitive. This is a single-operator workspace, not multi-tenant authorization.

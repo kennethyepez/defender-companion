@@ -1,6 +1,6 @@
 # Microsoft API coverage
 
-The public deployment uses fixtures only. The private adapter targets the Microsoft global cloud. These are application permissions; admin consent, an eligible license, onboarding and data retention are independent prerequisites. Do not grant write permissions to make an unavailable view work.
+The active private runtime uses only the existing alert collector and its sole `SecurityAlert.Read.All` role. The backend reads a minimized handoff and has no Microsoft credential. The public deployment uses fixtures only. The other endpoints below describe a standalone reference adapter, not an active connection or requested grant. Do not add permissions to make an unavailable view work.
 
 | View                                      | Endpoint                             | Minimum documented application permission | Implemented                   |
 | ----------------------------------------- | ------------------------------------ | ----------------------------------------- | ----------------------------- |
